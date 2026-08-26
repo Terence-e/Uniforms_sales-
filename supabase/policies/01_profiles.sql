@@ -1,0 +1,36 @@
+-- Profiles: everyone reads their own row; admins read and manage all.
+-- Idempotent -- safe to re-run after edits.
+
+drop policy if exists "profiles_select_self" on public.profiles;
+create policy "profiles_select_self"
+  on public.profiles for select
+  to authenticated
+  using (id = (select auth.uid()));
+
+drop policy if exists "profiles_select_admin" on public.profiles;
+create policy "profiles_select_admin"
+  on public.profiles for select
+  to authenticated
+  using (public.is_admin());
+
+-- Sellers may edit their own name but never their own role, so the role change
+-- is blocked by comparing against the stored value.
+drop policy if exists "profiles_update_self" on public.profiles;
+create policy "profiles_update_self"
+  on public.profiles for update
+  to authenticated
+  using (id = (select auth.uid()))
+  with check (
+    id = (select auth.uid())
+    and role = (select p.role from public.profiles p where p.id = (select auth.uid()))
+  );
+
+drop policy if exists "profiles_update_admin" on public.profiles;
+create policy "profiles_update_admin"
+  on public.profiles for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+-- Rows are created by the on_auth_user_created trigger, not by clients.
+-- No insert or delete policy is granted on purpose.

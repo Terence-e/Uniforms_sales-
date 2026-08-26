@@ -1,0 +1,107 @@
+{
+  "App": {
+    "name": "Vente d'uniformes scolaires",
+    "tagline": "Point de vente des uniformes scolaires"
+  },
+  "Nav": {
+    "sales": "Ventes",
+    "stock": "Stock",
+    "reports": "Rapports",
+    "signOut": "D\u00e9connexion",
+    "language": "Langue"
+  },
+  "Login": {
+    "title": "Connexion",
+    "subtitle": "Utilisez le compte fourni par l'administrateur de l'\u00e9cole.",
+    "email": "Adresse e-mail",
+    "emailPlaceholder": "vous@ecole.edu",
+    "password": "Mot de passe",
+    "submit": "Se connecter",
+    "submitting": "Connexion\u2026",
+    "invalidCredentials": "E-mail ou mot de passe incorrect.",
+    "unexpectedError": "Une erreur est survenue. Veuillez r\u00e9essayer."
+  },
+  "Sales": {
+    "title": "Nouvelle vente",
+    "subtitle": "Enregistrez une vente d'uniforme et imprimez le re\u00e7u.",
+    "customerName": "Nom du client",
+    "studentName": "Nom de l'\u00e9l\u00e8ve",
+    "classLevel": "Classe",
+    "phone": "T\u00e9l\u00e9phone",
+    "paymentMethod": "Mode de paiement",
+    "payment": {
+      "cash": "Esp\u00e8ces",
+      "mobile_money": "Mobile money",
+      "bank_transfer": "Virement bancaire"
+    },
+    "items": "Articles",
+    "addItem": "Ajouter un article",
+    "removeItem": "Retirer",
+    "product": "Article",
+    "selectProduct": "Choisir un article",
+    "size": "Taille",
+    "unitPrice": "Prix unitaire",
+    "quantity": "Qt\u00e9",
+    "lineTotal": "Total",
+    "subtotal": "Sous-total",
+    "discount": "Remise",
+    "grandTotal": "Montant d\u00fb",
+    "notes": "Notes",
+    "submit": "Enregistrer la vente",
+    "submitting": "Enregistrement\u2026",
+    "success": "Vente {receiptNo} enregistr\u00e9e.",
+    "recent": "Ventes r\u00e9centes",
+    "noRecent": "Aucune vente enregistr\u00e9e.",
+    "viewReceipt": "Re\u00e7u"
+  },
+  "Receipt": {
+    "title": "Re\u00e7u",
+    "receiptNo": "Re\u00e7u n\u00b0",
+    "date": "Date",
+    "servedBy": "Servi par",
+    "customer": "Client",
+    "student": "\u00c9l\u00e8ve",
+    "class": "Classe",
+    "description": "D\u00e9signation",
+    "quantity": "Qt\u00e9",
+    "unitPrice": "Prix unitaire",
+    "amount": "Montant",
+    "subtotal": "Sous-total",
+    "discount": "Remise",
+    "total": "Total",
+    "paymentMethod": "R\u00e9gl\u00e9 par",
+    "signature": "Signature",
+    "footer": "Merci de votre achat. Les articles vendus sont \u00e9changeables sous 7 jours avec ce re\u00e7u.",
+    "print": "Imprimer le re\u00e7u",
+    "back": "Retour aux ventes"
+  },
+  "Reports": {
+    "title": "Rapports",
+    "subtitle": "Exportez les donn\u00e9es de vente vers Excel.",
+    "from": "Du",
+    "to": "Au",
+    "export": "Exporter vers Excel",
+    "exporting": "Pr\u00e9paration du fichier\u2026",
+    "empty": "Aucune vente pour la p\u00e9riode s\u00e9lectionn\u00e9e.",
+    "summary": "{count} ventes pour un total de {total}"
+  },
+  "Stock": {
+    "title": "Stock",
+    "comingSoon": "La gestion du stock arrive en phase 2."
+  },
+  "Errors": {
+    "title": "Une erreur est survenue",
+    "description": "La page n'a pas pu \u00eatre charg\u00e9e.",
+    "retry": "R\u00e9essayer",
+    "notFound": "Introuvable",
+    "unauthorized": "Vous n'\u00eates pas connect\u00e9.",
+    "validation": "Veuillez v\u00e9rifier les champs signal\u00e9s."
+  },
+  "Validation": {
+    "required": "Ce champ est obligatoire.",
+    "minItems": "Ajoutez au moins un article.",
+    "positive": "Saisissez un nombre sup\u00e9rieur \u00e0 z\u00e9ro.",
+    "nonNegative": "Saisissez z\u00e9ro ou plus.",
+    "discountTooLarge": "La remise ne peut d\u00e9passer le sous-total."
+  }
+}

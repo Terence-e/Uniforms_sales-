@@ -1,0 +1,107 @@
+{
+  "App": {
+    "name": "School Uniform Sales",
+    "tagline": "Point of sale for school uniforms"
+  },
+  "Nav": {
+    "sales": "Sales",
+    "stock": "Stock",
+    "reports": "Reports",
+    "signOut": "Sign out",
+    "language": "Language"
+  },
+  "Login": {
+    "title": "Sign in",
+    "subtitle": "Use the account provided by the school administrator.",
+    "email": "Email",
+    "emailPlaceholder": "you@school.edu",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in\u2026",
+    "invalidCredentials": "Incorrect email or password.",
+    "unexpectedError": "Something went wrong. Please try again."
+  },
+  "Sales": {
+    "title": "New sale",
+    "subtitle": "Record a uniform sale and print the receipt.",
+    "customerName": "Customer name",
+    "studentName": "Student name",
+    "classLevel": "Class",
+    "phone": "Phone",
+    "paymentMethod": "Payment method",
+    "payment": {
+      "cash": "Cash",
+      "mobile_money": "Mobile money",
+      "bank_transfer": "Bank transfer"
+    },
+    "items": "Items",
+    "addItem": "Add item",
+    "removeItem": "Remove",
+    "product": "Product",
+    "selectProduct": "Select a product",
+    "size": "Size",
+    "unitPrice": "Unit price",
+    "quantity": "Qty",
+    "lineTotal": "Total",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "grandTotal": "Amount due",
+    "notes": "Notes",
+    "submit": "Record sale",
+    "submitting": "Recording\u2026",
+    "success": "Sale {receiptNo} recorded.",
+    "recent": "Recent sales",
+    "noRecent": "No sales recorded yet.",
+    "viewReceipt": "Receipt"
+  },
+  "Receipt": {
+    "title": "Receipt",
+    "receiptNo": "Receipt no.",
+    "date": "Date",
+    "servedBy": "Served by",
+    "customer": "Customer",
+    "student": "Student",
+    "class": "Class",
+    "description": "Description",
+    "quantity": "Qty",
+    "unitPrice": "Unit price",
+    "amount": "Amount",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "total": "Total",
+    "paymentMethod": "Paid by",
+    "signature": "Signature",
+    "footer": "Thank you for your purchase. Goods sold are exchangeable within 7 days with this receipt.",
+    "print": "Print receipt",
+    "back": "Back to sales"
+  },
+  "Reports": {
+    "title": "Reports",
+    "subtitle": "Export sales data to Excel.",
+    "from": "From",
+    "to": "To",
+    "export": "Export to Excel",
+    "exporting": "Preparing file\u2026",
+    "empty": "No sales found for the selected period.",
+    "summary": "{count} sales totalling {total}"
+  },
+  "Stock": {
+    "title": "Stock",
+    "comingSoon": "Stock management arrives in phase 2."
+  },
+  "Errors": {
+    "title": "Something went wrong",
+    "description": "The page could not be loaded.",
+    "retry": "Try again",
+    "notFound": "Not found",
+    "unauthorized": "You are not signed in.",
+    "validation": "Please check the highlighted fields."
+  },
+  "Validation": {
+    "required": "This field is required.",
+    "minItems": "Add at least one item.",
+    "positive": "Enter a number greater than zero.",
+    "nonNegative": "Enter zero or more.",
+    "discountTooLarge": "Discount cannot exceed the subtotal."
+  }
+}
