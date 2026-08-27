@@ -14,7 +14,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type UserRole = 'admin' | 'seller';
+export type UserRole = 'seller' | 'administration' | 'maintenance' | 'super_admin';
 export type PaymentMethod = 'cash' | 'mobile_money' | 'bank_transfer';
 export type StockMovementKind = 'intake' | 'sale' | 'return' | 'adjustment';
 
@@ -272,6 +272,9 @@ export type Database = {
     Views: Record<never, never>;
     Functions: {
       is_admin: { Args: Record<string, never>; Returns: boolean };
+      is_super_admin: { Args: Record<string, never>; Returns: boolean };
+      can_oversee: { Args: Record<string, never>; Returns: boolean };
+      can_operate: { Args: Record<string, never>; Returns: boolean };
       current_user_role: { Args: Record<string, never>; Returns: UserRole };
       next_receipt_no: { Args: Record<string, never>; Returns: string };
     };
