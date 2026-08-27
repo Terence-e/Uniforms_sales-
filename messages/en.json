@@ -4,11 +4,60 @@
     "tagline": "Point of sale for school uniforms"
   },
   "Nav": {
+    "dashboard": "Dashboard",
+    "profile": "Profile",
     "sales": "Sales",
     "stock": "Stock",
     "reports": "Reports",
     "signOut": "Sign out",
     "language": "Language"
+  },
+  "Profile": {
+    "title": "My profile",
+    "subtitle": "Your account details.",
+    "fullName": "Full name",
+    "email": "Email",
+    "role": "Role",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "notSet": "Not set"
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "greeting": "Welcome, {name}",
+    "roleIntro": "Signed in as {role}",
+    "readonlyBanner": "Your account is read-only. Every write is blocked across the system (A-FR-2.2).",
+    "sectionTitle": "What you can do",
+    "previewNote": "Temporary preview — layout and styling are placeholders.",
+    "open": "Open",
+    "planned": "Planned",
+    "accessWrite": "Can edit",
+    "accessRead": "Read-only",
+    "roles": {
+      "seller": "Seller",
+      "administration": "Administration",
+      "maintenance": "Maintenance",
+      "super_admin": "Super Admin"
+    },
+    "summary": {
+      "seller": "Operations only — production, sales, orders, returns and cancellations. You can never change a price.",
+      "administration": "Read-only across the whole system. You see everything and change nothing.",
+      "maintenance": "Full functional access, audited like everyone else.",
+      "super_admin": "Everything — plus the accounts, catalogue and prices no one else may touch."
+    },
+    "modules": {
+      "sales": { "title": "Sales (till)", "desc": "Record a uniform sale and print the receipt." },
+      "openJobs": { "title": "Open jobs", "desc": "Orders and alterations — the day's work list." },
+      "production": { "title": "Production & stock", "desc": "Record finished garments entering stock." },
+      "returns": { "title": "Returns & exchanges", "desc": "Size exchanges, returns and refunds within policy." },
+      "cancellations": { "title": "Cancellations", "desc": "Void a sale, with a reason, kept in the audit trail." },
+      "receipts": { "title": "Receipts", "desc": "Look up and reprint a receipt by its reference number." },
+      "catalogue": { "title": "Catalogue & prices", "desc": "Garments, sizes and prices." },
+      "reports": { "title": "Reports & exports", "desc": "Sales figures and Excel exports." },
+      "audit": { "title": "Audit log", "desc": "Every action, filterable by date, user and type." },
+      "accounts": { "title": "User accounts", "desc": "Create accounts, reset passwords and set roles." }
+    }
   },
   "Login": {
     "title": "Sign in",
@@ -95,6 +144,8 @@
     "retry": "Try again",
     "notFound": "Not found",
     "unauthorized": "You are not signed in.",
+    "noProfile": "We couldn't load your account profile. Please sign out and try again, or contact the administrator.",
+    "accountDeactivated": "This account has been deactivated. Please contact the administrator.",
     "validation": "Please check the highlighted fields."
   },
   "Validation": {

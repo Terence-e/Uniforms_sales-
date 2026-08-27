@@ -4,11 +4,60 @@
     "tagline": "Point de vente des uniformes scolaires"
   },
   "Nav": {
+    "dashboard": "Tableau de bord",
+    "profile": "Profil",
     "sales": "Ventes",
     "stock": "Stock",
     "reports": "Rapports",
     "signOut": "D\u00e9connexion",
     "language": "Langue"
+  },
+  "Profile": {
+    "title": "Mon profil",
+    "subtitle": "Les informations de votre compte.",
+    "fullName": "Nom complet",
+    "email": "Adresse e-mail",
+    "role": "R\u00f4le",
+    "status": "Statut",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "notSet": "Non renseign\u00e9"
+  },
+  "Dashboard": {
+    "title": "Tableau de bord",
+    "greeting": "Bienvenue, {name}",
+    "roleIntro": "Connect\u00e9 en tant que {role}",
+    "readonlyBanner": "Votre compte est en lecture seule. Toute \u00e9criture est bloqu\u00e9e dans tout le syst\u00e8me (A-FR-2.2).",
+    "sectionTitle": "Ce que vous pouvez faire",
+    "previewNote": "Aper\u00e7u temporaire \u2014 la mise en page et le style sont provisoires.",
+    "open": "Ouvrir",
+    "planned": "\u00c0 venir",
+    "accessWrite": "Modifiable",
+    "accessRead": "Lecture seule",
+    "roles": {
+      "seller": "Vendeur",
+      "administration": "Administration",
+      "maintenance": "Maintenance",
+      "super_admin": "Super Admin"
+    },
+    "summary": {
+      "seller": "Op\u00e9rations uniquement \u2014 production, ventes, commandes, retours et annulations. Vous ne pouvez jamais modifier un prix.",
+      "administration": "Lecture seule dans tout le syst\u00e8me. Vous voyez tout et ne modifiez rien.",
+      "maintenance": "Acc\u00e8s fonctionnel complet, trac\u00e9 comme tout le monde.",
+      "super_admin": "Tout \u2014 y compris les comptes, le catalogue et les prix auxquels personne d'autre ne touche."
+    },
+    "modules": {
+      "sales": { "title": "Ventes (caisse)", "desc": "Enregistrer une vente d'uniforme et imprimer le re\u00e7u." },
+      "openJobs": { "title": "Travaux en cours", "desc": "Commandes et retouches \u2014 la liste de travail du jour." },
+      "production": { "title": "Production et stock", "desc": "Enregistrer les v\u00eatements finis entrant en stock." },
+      "returns": { "title": "Retours et \u00e9changes", "desc": "\u00c9changes de taille, retours et remboursements dans les d\u00e9lais." },
+      "cancellations": { "title": "Annulations", "desc": "Annuler une vente, avec motif, conserv\u00e9 dans le journal d'audit." },
+      "receipts": { "title": "Re\u00e7us", "desc": "Retrouver et r\u00e9imprimer un re\u00e7u par son num\u00e9ro." },
+      "catalogue": { "title": "Catalogue et prix", "desc": "V\u00eatements, tailles et prix." },
+      "reports": { "title": "Rapports et exports", "desc": "Chiffres de vente et exports Excel." },
+      "audit": { "title": "Journal d'audit", "desc": "Chaque action, filtrable par date, utilisateur et type." },
+      "accounts": { "title": "Comptes utilisateurs", "desc": "Cr\u00e9er des comptes, r\u00e9initialiser les mots de passe et d\u00e9finir les r\u00f4les." }
+    }
   },
   "Login": {
     "title": "Connexion",
@@ -95,6 +144,8 @@
     "retry": "R\u00e9essayer",
     "notFound": "Introuvable",
     "unauthorized": "Vous n'\u00eates pas connect\u00e9.",
+    "noProfile": "Impossible de charger le profil de votre compte. Veuillez vous d\u00e9connecter et r\u00e9essayer, ou contacter l'administrateur.",
+    "accountDeactivated": "Ce compte a \u00e9t\u00e9 d\u00e9sactiv\u00e9. Veuillez contacter l'administrateur.",
     "validation": "Veuillez v\u00e9rifier les champs signal\u00e9s."
   },
   "Validation": {

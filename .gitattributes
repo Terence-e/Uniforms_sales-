@@ -1,0 +1,2 @@
+# Shell hooks must stay LF or they break when run through bash on checkout.
+.githooks/** text eol=lf

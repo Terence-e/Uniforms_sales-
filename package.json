@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prepare": "node scripts/setup-hooks.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -13,10 +14,12 @@
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
     "db:policies": "node scripts/apply-policies.mjs",
+    "db:seed:users": "node scripts/seed-users.mjs",
     "db:types": "supabase gen types typescript --linked --schema public > src/types/database.types.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
+    "@sentry/nextjs": "^10.71.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
     "class-variance-authority": "^0.7.1",
@@ -44,9 +47,9 @@
     "@types/react-signature-canvas": "^1.0.7",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
+    "shadcn": "^4.19.0",
     "supabase": "^2.116.0",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "shadcn": "^4.19.0"
+    "typescript": "^5"
   }
 }

@@ -17,7 +17,9 @@ function splitLocale(pathname: string) {
   };
 }
 
-export async function middleware(request: NextRequest) {
+// Renamed from `middleware` in Next.js 16 -- the file convention and export are
+// now `proxy` (node_modules/next/dist/docs/.../proxy.md). Behaviour is identical.
+export async function proxy(request: NextRequest) {
   // 1. Locale negotiation first -- it may rewrite or redirect.
   const response = handleI18nRouting(request);
 
@@ -36,13 +38,16 @@ export async function middleware(request: NextRequest) {
   if (!user && !isPublic) {
     const loginUrl = new URL(`/${locale}/login`, request.url);
     if (pathname !== '/') {
-      loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
+      // Store the locale-stripped path. `signIn` feeds this to the locale-aware
+      // redirect, which re-adds the prefix -- passing `/en/sales` here would
+      // double it into `/en/en/sales`.
+      loginUrl.searchParams.set('redirectTo', pathname);
     }
     return NextResponse.redirect(loginUrl);
   }
 
   if (user && isPublic) {
-    return NextResponse.redirect(new URL(`/${locale}/sales`, request.url));
+    return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
   }
 
   return response;

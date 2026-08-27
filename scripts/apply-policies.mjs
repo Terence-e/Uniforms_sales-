@@ -16,6 +16,9 @@ import { dirname, join } from 'node:path';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const policiesDir = join(root, 'supabase', 'policies');
 
+// Pick up SUPABASE_DB_URL from .env.local, same as scripts/seed-users.mjs.
+loadEnvFile(join(root, '.env.local'));
+
 const dbUrl = process.env.SUPABASE_DB_URL;
 if (!dbUrl) {
   console.error(
@@ -64,3 +67,27 @@ if (result.error?.code === 'ENOENT') {
 if (result.status !== 0) process.exit(result.status ?? 1);
 
 console.log(`Applied ${files.length} policy file(s): ${files.join(', ')}`);
+
+// --- helpers ---------------------------------------------------------------
+
+function loadEnvFile(path) {
+  let text;
+  try {
+    text = readFileSync(path, 'utf8');
+  } catch {
+    return; // no .env.local -- rely on the real environment
+  }
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+    if (!m) continue;
+    const [, key] = m;
+    let val = m[2];
+    if (
+      (val.startsWith('"') && val.endsWith('"')) ||
+      (val.startsWith("'") && val.endsWith("'"))
+    ) {
+      val = val.slice(1, -1);
+    }
+    if (process.env[key] === undefined) process.env[key] = val;
+  }
+}
