@@ -41,7 +41,7 @@ export function toDateInputValue(value: Date): string {
 }
 
 export const SCHOOL = {
-  name: process.env.NEXT_PUBLIC_SCHOOL_NAME || 'School Uniform Shop',
+  name: process.env.NEXT_PUBLIC_SCHOOL_NAME || 'Fondation Révélation Sainte Thérèse',
   address: process.env.NEXT_PUBLIC_SCHOOL_ADDRESS || '',
   phone: process.env.NEXT_PUBLIC_SCHOOL_PHONE || ''
 };
