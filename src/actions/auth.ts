@@ -45,8 +45,10 @@ export async function signIn(
   const locale = await getLocale();
   revalidatePath('/', 'layout');
 
-  // `redirectTo` already carries a locale prefix when the middleware set it.
-  redirect({ href: parsed.data.redirectTo ?? '/sales', locale });
+  // Every user's first screen is their role dashboard overview -- always, even
+  // when they were deep-linking somewhere else. The locale-aware `redirect`
+  // adds the locale prefix itself, so the path passed in must not carry one.
+  redirect({ href: '/dashboard', locale });
 
   // `redirect` throws, so this is unreachable -- it only exists because the
   // helper isn't typed as `never` and useActionState needs a concrete state type.
