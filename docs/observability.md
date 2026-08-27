@@ -10,15 +10,17 @@ free tier (5k errors/month) is far more than this app will produce.
 ## Status
 
 - [x] Env vars declared in `.env.example` (`NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`)
-- [x] PII-scrubbing spec agreed (below)
+- [x] PII-scrubbing implemented (`src/lib/sentry-scrub.ts`)
+- [x] SDK installed (`@sentry/nextjs`) and wired; `npm run build` verified green
 - [ ] Sentry project created + both developers invited — **dashboard task**
 - [ ] DSN added to Vercel (Production + Preview) and local `.env.local`
-- [ ] SDK installed and wired (see below), build verified on this Next build
 - [ ] Test error confirmed in the dashboard with **no PII**
 
-The SDK is intentionally not installed yet: this repo runs a **customised Next
-16.3.3**, and `@sentry/nextjs` hooks into the Next build, so it must be added and
-then build-verified, not merged blind. Do that once the project exists.
+The SDK is wired but **dormant until a DSN is set** — `Sentry.init` with no DSN is
+a no-op, so the app runs identically until you add `NEXT_PUBLIC_SENTRY_DSN`. The
+`withSentryConfig` build plugin (source-map upload, tunnelling) was intentionally
+left off to keep the customised Next 16.3.3 build untouched; add it later if you
+want uploaded source maps.
 
 ## 1. Create the project (dashboard)
 
@@ -36,84 +38,37 @@ then build-verified, not merged blind. Do that once the project exists.
 With no DSN set, the SDK is a no-op, so the app runs identically when Sentry is
 off.
 
-## 3. Install and wire
+## 3. Install and wire — done
 
-```bash
-npm install @sentry/nextjs
-npm run build      # verify the customised Next build still succeeds
-```
+`@sentry/nextjs` is installed and wired the App-Router way (no legacy
+`sentry.*.config.ts`), verified with `npm run build`:
 
-Wire it the App-Router way (no legacy `sentry.*.config.ts`):
-
-- `instrumentation-client.ts` — browser `Sentry.init`
-- `instrumentation.ts` — `register()` calls server/edge `Sentry.init`; also
+- `src/instrumentation-client.ts` — browser `Sentry.init` + `onRouterTransitionStart`
+- `src/instrumentation.ts` — `register()` runs server/edge `Sentry.init`; also
   `export const onRequestError = Sentry.captureRequestError`
-- `src/app/global-error.tsx` — reports root-level render crashes
+- `src/app/global-error.tsx` — reports root-layout crashes to Sentry
+- `src/lib/sentry-scrub.ts` — the PII scrubber wired into every init
 
-Every `Sentry.init` uses the **same** options object below.
+Every `Sentry.init` passes `sendDefaultPii: false` plus the same
+`beforeSend`/`beforeSendTransaction` scrubber described below.
 
 ## 4. PII scrubbing (required)
 
 Student names, parent/customer names, phone numbers, and payment
 references/amounts must **never** reach Sentry. Two layers:
 
-**a) Turn off automatic PII and scrub events before they send.**
+**a) Turn off automatic PII and scrub events before they send.** Implemented in
+[`src/lib/sentry-scrub.ts`](../src/lib/sentry-scrub.ts) and wired into every
+`Sentry.init` as `beforeSend`/`beforeSendTransaction`, alongside
+`sendDefaultPii: false`. It:
 
-```ts
-// lib/sentry-scrub.ts — used by every Sentry.init as { beforeSend, beforeSendTransaction }
-const PII_KEYS = [
-  'customer_name', 'student_name', 'parent_name', 'name',
-  'phone', 'msisdn',
-  'payment_reference', 'reference', 'txn', 'amount', 'total', 'subtotal', 'signature_url'
-];
+- redacts values under PII keys (`customer_name`, `student_name`, `parent_name`,
+  `name`, `phone`, `payment_reference`, `amount`, `total`, `signature_url`, …);
+- rewrites Cameroon phone numbers and long digit runs (references/amounts) inside
+  free-text — error messages, exception values and breadcrumbs included;
+- drops `request.cookies`/`request.headers` and reduces `user` to an opaque `id`.
 
-// Cameroon phone numbers, and long digit runs that look like references/amounts.
-const PHONE = /(\+?237)?[\s-]?\d{9}\b/g;
-const LONGNUM = /\b\d{5,}\b/g;
-
-function scrubString(s: string): string {
-  return s.replace(PHONE, '[redacted-phone]').replace(LONGNUM, '[redacted-num]');
-}
-
-function scrub(value: unknown): unknown {
-  if (typeof value === 'string') return scrubString(value);
-  if (Array.isArray(value)) return value.map(scrub);
-  if (value && typeof value === 'object') {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value)) {
-      out[k] = PII_KEYS.includes(k.toLowerCase()) ? '[redacted]' : scrub(v);
-    }
-    return out;
-  }
-  return value;
-}
-
-export function beforeSend(event) {
-  if (event.request) {
-    delete event.request.cookies;
-    if (event.request.data) event.request.data = scrub(event.request.data);
-    if (event.request.query_string) event.request.query_string = scrubString(String(event.request.query_string));
-  }
-  if (event.message) event.message = scrubString(event.message);
-  event.extra = scrub(event.extra);
-  event.contexts = scrub(event.contexts);
-  // Drop the user's email/IP; keep only the opaque id for correlation.
-  if (event.user) event.user = { id: event.user.id };
-  return event;
-}
-```
-
-Init options for all runtimes:
-
-```ts
-Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  sendDefaultPii: false,          // do not attach IP / headers / cookies
-  tracesSampleRate: 0.1,
-  beforeSend,
-  beforeSendTransaction: beforeSend,
-});
-```
+Edit the deny-list / patterns in that one file if new PII fields appear.
 
 **b) Don't create the PII in the first place.** Never put a customer/student
 name, phone, or amount into an `Error` message or a Sentry breadcrumb/tag. Log
