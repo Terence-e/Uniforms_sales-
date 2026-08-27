@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+#
+# Blocks commits that would leak secrets. Dependency-free -- enabled for everyone
+# via the "prepare" script in package.json (git config core.hooksPath .githooks).
+#
+# It refuses to commit any real .env file and scans staged content for the
+# secret shapes this project actually uses. Placeholder values (the ones in
+# .env.example) are allowed so the template can still be committed.
+#
+# Bypass in a genuine emergency with:  git commit --no-verify
+set -euo pipefail
+
+fail() { echo "" >&2; echo "  pre-commit: $1" >&2; echo "  (bypass with --no-verify only if you are certain)" >&2; echo "" >&2; exit 1; }
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+
+# 1. Never commit a real env file. Only the template belongs in git.
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  base=$(basename "$f")
+  case "$base" in
+    .env.example) ;;                       # the template is fine
+    .env|.env.*) fail "refusing to commit env file '$f' -- secrets live in .env.local only." ;;
+  esac
+done <<< "$staged"
+
+# 2. Scan the staged diff for secret shapes. Skip obvious placeholders.
+added=$(git diff --cached -U0 --no-color | grep -E '^\+' | grep -vE '^\+\+\+' || true)
+scan=$(printf '%s\n' "$added" | grep -viE 'YOUR-PASSWORD|<[a-z-]+>|example|placeholder|xxxx' || true)
+
+declare -a hits=()
+printf '%s\n' "$scan" | grep -qE 'eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}' && hits+=("a Supabase/JWT key (eyJ...)")
+printf '%s\n' "$scan" | grep -qE 'postgres(ql)?://[^:@/]+:[^@/]+@' && hits+=("a Postgres URL with an inline password")
+printf '%s\n' "$scan" | grep -qE 'BEGIN [A-Z ]*PRIVATE KEY' && hits+=("a private key block")
+printf '%s\n' "$scan" | grep -qE 'https://[0-9a-f]+@[a-z0-9.-]*sentry\.io' && hits+=("a Sentry DSN with a real key")
+
+if [ "${#hits[@]}" -gt 0 ]; then
+  fail "possible secret in staged changes: ${hits[*]}."
+fi
+
+exit 0

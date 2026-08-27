@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prepare": "node scripts/setup-hooks.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -13,6 +14,7 @@
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
     "db:policies": "node scripts/apply-policies.mjs",
+    "db:seed:users": "node scripts/seed-users.mjs",
     "db:types": "supabase gen types typescript --linked --schema public > src/types/database.types.ts"
   },
   "dependencies": {
