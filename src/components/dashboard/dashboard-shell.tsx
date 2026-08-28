@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { MenuIcon, XIcon, LogOutIcon } from 'lucide-react';
+import { MenuIcon, XIcon, LogOutIcon, BellIcon, SearchIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 import { Link, usePathname } from '@/i18n/navigation';
 import { signOut } from '@/actions/auth';
 import { SchoolLogo } from '@/components/brand/school-logo';
@@ -10,6 +11,7 @@ import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   NAV_SECTION_ORDER,
   navItemsFor,
@@ -18,6 +20,11 @@ import {
 } from '@/lib/dashboard-nav';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@/types/database.types';
+
+function initialsOf(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return (parts.map((p) => p[0]).slice(0, 2).join('') || 'U').toUpperCase();
+}
 
 export function DashboardShell({
   role,
@@ -30,6 +37,7 @@ export function DashboardShell({
   roleLabel: string;
   children: React.ReactNode;
 }) {
+  const t = useTranslations('Nav');
   const [mobileOpen, setMobileOpen] = useState(false);
   const items = navItemsFor(role);
 
@@ -66,31 +74,45 @@ export function DashboardShell({
             variant="ghost"
             size="icon"
             className="lg:hidden"
-            aria-label="Menu"
+            aria-label={t('menu')}
             onClick={() => setMobileOpen(true)}
           >
             <MenuIcon className="size-5" />
           </Button>
 
           <div className="lg:hidden">
-            <SchoolLogo size="sm" showText={false} />
+            <SchoolLogo size="sm" />
           </div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              toast.info(t('searchHint'));
+            }}
+            className="relative hidden max-w-xl flex-1 md:block"
+          >
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input name="q" placeholder={t('searchPlaceholder')} className="pl-9" />
+          </form>
 
           <div className="ml-auto flex items-center gap-1.5">
             <LanguageSwitcher />
             <ThemeToggle />
-            <div className="mx-1 hidden text-right sm:block">
-              <p className="text-sm font-medium leading-tight">{userName}</p>
-              <p className="text-xs leading-tight text-muted-foreground">{roleLabel}</p>
-            </div>
-            <form action={signOut}>
-              <Button type="submit" variant="outline" size="sm" className="gap-1.5">
-                <LogOutIcon className="size-4" />
-                <span className="hidden sm:inline">
-                  <SignOutLabel />
-                </span>
-              </Button>
-            </form>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t('notifications')}
+              onClick={() => toast.info(t('notificationsEmpty'))}
+            >
+              <BellIcon className="size-5" />
+            </Button>
+            <Link
+              href="/profile"
+              title={`${userName} · ${roleLabel}`}
+              className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary ring-1 ring-border transition hover:ring-primary/50"
+            >
+              {initialsOf(userName)}
+            </Link>
           </div>
         </header>
 
@@ -100,11 +122,6 @@ export function DashboardShell({
       </div>
     </div>
   );
-}
-
-function SignOutLabel() {
-  const t = useTranslations('Nav');
-  return <>{t('signOut')}</>;
 }
 
 function SidebarContent({
@@ -187,6 +204,19 @@ function SidebarContent({
           </div>
         ))}
       </nav>
+
+      <div className="border-t p-3">
+        <form action={signOut}>
+          <Button
+            type="submit"
+            variant="ghost"
+            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+          >
+            <LogOutIcon className="size-[18px]" />
+            {tNav('signOut')}
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

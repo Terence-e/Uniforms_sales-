@@ -1,11 +1,20 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { Inter, Poppins } from 'next/font/google';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { routing } from '@/i18n/routing';
 import '../globals.css';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-poppins',
+  display: 'swap'
+});
 
 type LocaleParams = { locale: string };
 
@@ -42,7 +51,11 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html
+      lang={locale}
+      className={`${inter.variable} ${poppins.variable}`}
+      suppressHydrationWarning
+    >
       <body className="min-h-dvh bg-background font-sans antialiased">
         <NextIntlClientProvider>
           <ThemeProvider

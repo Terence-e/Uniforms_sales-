@@ -209,3 +209,38 @@ export async function getSalesSummary(from: string, to: string) {
     total: rows.reduce((sum, row) => sum + row.total, 0)
   };
 }
+
+function monthKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Sales totals per calendar month over the last `months` months (oldest first),
+ * with empty months filled in as zero. RLS scopes it: a seller sees only their
+ * own sales, oversight roles see all.
+ */
+export async function getMonthlySales(months = 8) {
+  const supabase = await createClient();
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+
+  const { data } = await supabase
+    .from('sales')
+    .select('sold_at, total')
+    .gte('sold_at', start.toISOString());
+
+  const buckets = new Map<string, { total: number; count: number }>();
+  for (let i = 0; i < months; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+    buckets.set(monthKey(d), { total: 0, count: 0 });
+  }
+  for (const row of data ?? []) {
+    const bucket = buckets.get(monthKey(new Date(row.sold_at)));
+    if (bucket) {
+      bucket.total += row.total;
+      bucket.count += 1;
+    }
+  }
+
+  return Array.from(buckets, ([key, v]) => ({ key, total: v.total, count: v.count }));
+}

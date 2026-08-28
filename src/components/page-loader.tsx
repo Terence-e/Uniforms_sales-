@@ -1,4 +1,3 @@
-import { DoveMark } from '@/components/brand/school-logo';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 
@@ -20,10 +19,7 @@ export function PageLoader({
         className
       )}
     >
-      <div className="relative flex items-center justify-center">
-        <Spinner className="size-12 border-[3px]" />
-        <DoveMark className="absolute size-6" />
-      </div>
+      <Spinner className="size-10 border-[3px]" />
       {label ? <p className="text-sm text-muted-foreground">{label}</p> : null}
     </div>
   );

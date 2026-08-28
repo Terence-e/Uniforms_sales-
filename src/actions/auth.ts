@@ -81,3 +81,14 @@ export async function getProfile() {
   if (!data) return null;
   return { ...data, email: user.email ?? '' };
 }
+
+/** Count of active accounts. Only meaningful for oversight roles (RLS scopes it);
+ * used on the Super Admin dashboard. */
+export async function countActiveUsers() {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_active', true);
+  return count ?? 0;
+}
