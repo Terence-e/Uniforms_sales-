@@ -6,7 +6,7 @@ import { updateSession } from '@/lib/supabase/middleware';
 const handleI18nRouting = createIntlMiddleware(routing);
 
 /** Route segments reachable without a session (locale prefix stripped). */
-const PUBLIC_PATHS = ['/login'];
+const PUBLIC_PATHS = ['/login', '/forgot-password'];
 
 function splitLocale(pathname: string) {
   const [, maybeLocale, ...rest] = pathname.split('/');

@@ -10,7 +10,30 @@
     "stock": "Stock",
     "reports": "Reports",
     "signOut": "Sign out",
-    "language": "Language"
+    "language": "Language",
+    "toggleTheme": "Toggle theme",
+    "sections": {
+      "overview": "Overview",
+      "operations": "Operations",
+      "records": "Records",
+      "admin": "Administration"
+    }
+  },
+  "Auth": {
+    "support": "Support",
+    "supportToast": "Need help signing in? Contact your school administrator.",
+    "haveAccount": "Have an account?",
+    "login": "Login"
+  },
+  "ForgotPassword": {
+    "title": "Forgot your password",
+    "subtitle": "Enter your email and your administrator will help you reset your password.",
+    "email": "Email",
+    "emailPlaceholder": "Enter your email",
+    "submit": "Send request",
+    "submitting": "Sending…",
+    "success": "If that account exists, your administrator has been notified.",
+    "invalidEmail": "Enter a valid email address."
   },
   "Profile": {
     "title": "My profile",
@@ -25,6 +48,22 @@
   },
   "Dashboard": {
     "title": "Dashboard",
+    "overview": {
+      "welcome": "Welcome back, {name}",
+      "subtitle": "Here's what's happening today.",
+      "recentActivity": "Recent activity",
+      "lowStock": "Low stock alerts",
+      "viewAll": "View all",
+      "noActivity": "No recent sales.",
+      "noLowStock": "Everything is well stocked.",
+      "statSalesMonth": "Sales this month",
+      "statRevenueMonth": "Revenue this month",
+      "statProducts": "Active products",
+      "statLowStock": "Low stock",
+      "statThisMonth": "This month",
+      "reorderLabel": "Reorder: {n}",
+      "stockLabel": "Stock: {n}"
+    },
     "greeting": "Welcome, {name}",
     "roleIntro": "Signed in as {role}",
     "readonlyBanner": "Your account is read-only. Every write is blocked across the system (A-FR-2.2).",
@@ -61,10 +100,13 @@
   },
   "Login": {
     "title": "Sign in",
+    "heading": "Login to your account",
     "subtitle": "Use the account provided by the school administrator.",
     "email": "Email",
     "emailPlaceholder": "you@school.edu",
     "password": "Password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
     "submit": "Sign in",
     "submitting": "Signing in\u2026",
     "invalidCredentials": "Incorrect email or password.",

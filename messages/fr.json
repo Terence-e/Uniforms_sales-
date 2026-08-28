@@ -10,7 +10,30 @@
     "stock": "Stock",
     "reports": "Rapports",
     "signOut": "D\u00e9connexion",
-    "language": "Langue"
+    "language": "Langue",
+    "toggleTheme": "Changer de th\u00e8me",
+    "sections": {
+      "overview": "Vue d'ensemble",
+      "operations": "Op\u00e9rations",
+      "records": "Registres",
+      "admin": "Administration"
+    }
+  },
+  "Auth": {
+    "support": "Assistance",
+    "supportToast": "Besoin d'aide pour vous connecter ? Contactez l'administrateur de l'\u00e9cole.",
+    "haveAccount": "Vous avez un compte ?",
+    "login": "Se connecter"
+  },
+  "ForgotPassword": {
+    "title": "Mot de passe oubli\u00e9",
+    "subtitle": "Saisissez votre e-mail et votre administrateur vous aidera \u00e0 r\u00e9initialiser votre mot de passe.",
+    "email": "Adresse e-mail",
+    "emailPlaceholder": "Saisissez votre e-mail",
+    "submit": "Envoyer la demande",
+    "submitting": "Envoi\u2026",
+    "success": "Si ce compte existe, votre administrateur a \u00e9t\u00e9 notifi\u00e9.",
+    "invalidEmail": "Saisissez une adresse e-mail valide."
   },
   "Profile": {
     "title": "Mon profil",
@@ -25,6 +48,22 @@
   },
   "Dashboard": {
     "title": "Tableau de bord",
+    "overview": {
+      "welcome": "Bon retour, {name}",
+      "subtitle": "Voici ce qui se passe aujourd'hui.",
+      "recentActivity": "Activité récente",
+      "lowStock": "Alertes de stock bas",
+      "viewAll": "Voir tout",
+      "noActivity": "Aucune vente récente.",
+      "noLowStock": "Tout est bien approvisionné.",
+      "statSalesMonth": "Ventes ce mois",
+      "statRevenueMonth": "Revenu ce mois",
+      "statProducts": "Produits actifs",
+      "statLowStock": "Stock bas",
+      "statThisMonth": "Ce mois-ci",
+      "reorderLabel": "Seuil : {n}",
+      "stockLabel": "Stock : {n}"
+    },
     "greeting": "Bienvenue, {name}",
     "roleIntro": "Connect\u00e9 en tant que {role}",
     "readonlyBanner": "Votre compte est en lecture seule. Toute \u00e9criture est bloqu\u00e9e dans tout le syst\u00e8me (A-FR-2.2).",
@@ -61,10 +100,13 @@
   },
   "Login": {
     "title": "Connexion",
+    "heading": "Connectez-vous \u00e0 votre compte",
     "subtitle": "Utilisez le compte fourni par l'administrateur de l'\u00e9cole.",
     "email": "Adresse e-mail",
     "emailPlaceholder": "vous@ecole.edu",
     "password": "Mot de passe",
+    "rememberMe": "Se souvenir de moi",
+    "forgotPassword": "Mot de passe oubli\u00e9 ?",
     "submit": "Se connecter",
     "submitting": "Connexion\u2026",
     "invalidCredentials": "E-mail ou mot de passe incorrect.",
