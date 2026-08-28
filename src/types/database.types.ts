@@ -27,6 +27,7 @@ export type Database = {
           full_name: string;
           role: UserRole;
           is_active: boolean;
+          avatar_url: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -35,6 +36,7 @@ export type Database = {
           full_name?: string;
           role?: UserRole;
           is_active?: boolean;
+          avatar_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -43,6 +45,7 @@ export type Database = {
           full_name?: string;
           role?: UserRole;
           is_active?: boolean;
+          avatar_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };

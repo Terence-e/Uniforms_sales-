@@ -49,7 +49,20 @@
     "status": "Status",
     "active": "Active",
     "inactive": "Inactive",
-    "notSet": "Not set"
+    "notSet": "Not set",
+    "edit": "Edit",
+    "editTitle": "Edit profile",
+    "editPhoto": "Change photo",
+    "changePhoto": "Change photo",
+    "removePhoto": "Remove",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "updated": "Profile updated.",
+    "nameRequired": "Name is required.",
+    "imageTooLarge": "That image is too large.",
+    "updateError": "Could not update your profile.",
+    "notAnImage": "Please choose an image file."
   },
   "Dashboard": {
     "title": "Dashboard",

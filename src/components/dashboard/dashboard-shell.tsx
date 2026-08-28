@@ -30,11 +30,13 @@ export function DashboardShell({
   role,
   userName,
   roleLabel,
+  avatarUrl,
   children
 }: {
   role: UserRole;
   userName: string;
   roleLabel: string;
+  avatarUrl?: string | null;
   children: React.ReactNode;
 }) {
   const t = useTranslations('Nav');
@@ -109,9 +111,14 @@ export function DashboardShell({
             <Link
               href="/profile"
               title={`${userName} · ${roleLabel}`}
-              className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary ring-1 ring-border transition hover:ring-primary/50"
+              className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-sm font-semibold text-primary ring-1 ring-border transition hover:ring-primary/50"
             >
-              {initialsOf(userName)}
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- data URL avatar
+                <img src={avatarUrl} alt="" className="size-full object-cover" />
+              ) : (
+                initialsOf(userName)
+              )}
             </Link>
           </div>
         </header>

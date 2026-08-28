@@ -44,6 +44,7 @@ export default async function DashboardLayout({ children, params }: Props) {
       role={role}
       userName={profile.full_name || profile.email}
       roleLabel={tDash(`roles.${role}`)}
+      avatarUrl={profile.avatar_url}
     >
       {children}
     </DashboardShell>
