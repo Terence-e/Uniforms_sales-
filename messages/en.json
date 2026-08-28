@@ -40,6 +40,68 @@
     "success": "If that account exists, your administrator has been notified.",
     "invalidEmail": "Enter a valid email address."
   },
+  "ChangePassword": {
+    "title": "Set a new password",
+    "subtitle": "You must change your temporary password before continuing.",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "hint": "At least 8 characters, including a letter and a number.",
+    "show": "Show password",
+    "hide": "Hide password",
+    "strengthWeak": "Weak",
+    "strengthFair": "Fair",
+    "strengthStrong": "Strong",
+    "submit": "Update password",
+    "submitting": "Updating…",
+    "success": "Password updated.",
+    "error": "Could not update your password."
+  },
+  "Accounts": {
+    "title": "User accounts",
+    "subtitle": "Create accounts and assign a role. Accounts are created here only — there is no public sign-up.",
+    "createHeading": "Create account",
+    "listHeading": "Accounts",
+    "fullName": "Full name",
+    "email": "Email",
+    "role": "Role",
+    "tempPassword": "Temporary password",
+    "generate": "Generate a new password",
+    "createBtn": "Create account",
+    "creating": "Creating…",
+    "createdTitle": "Account created",
+    "createdBody": "Share these credentials with the user securely. They must change the password on first login.",
+    "copy": "Copy",
+    "copied": "Copied.",
+    "done": "Done",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "mustChange": "Must change password",
+    "forbidden": "Only a Super Admin can create accounts.",
+    "unauthorized": "You are not signed in.",
+    "createFailed": "Could not create the account.",
+    "actions": "Actions",
+    "resetPassword": "Reset password",
+    "resetFailed": "Could not reset the password.",
+    "resetDoneTitle": "Temporary password set",
+    "resetDoneBody": "Share this with {name} securely. They must change it at next login."
+  },
+  "Notifications": {
+    "title": "Notifications",
+    "empty": "No notifications.",
+    "seeAll": "See all notifications",
+    "allTitle": "All notifications",
+    "clearAll": "Clear all",
+    "delete": "Delete",
+    "markAllRead": "Mark all as read",
+    "close": "Close",
+    "generic": "Notification",
+    "passwordResetRequest": {
+      "title": "Password reset requested",
+      "body": "{email} needs a new password. Open Accounts to set a temporary one."
+    }
+  },
   "Profile": {
     "title": "My profile",
     "subtitle": "Your account details.",
@@ -62,7 +124,8 @@
     "nameRequired": "Name is required.",
     "imageTooLarge": "That image is too large.",
     "updateError": "Could not update your profile.",
-    "notAnImage": "Please choose an image file."
+    "notAnImage": "Please choose an image file.",
+    "changePassword": "Change my password"
   },
   "Dashboard": {
     "title": "Dashboard",
@@ -222,6 +285,14 @@
     "minItems": "Add at least one item.",
     "positive": "Enter a number greater than zero.",
     "nonNegative": "Enter zero or more.",
-    "discountTooLarge": "Discount cannot exceed the subtotal."
+    "discountTooLarge": "Discount cannot exceed the subtotal.",
+    "passwordShort": "Use at least 8 characters.",
+    "passwordLetter": "Include at least one letter.",
+    "passwordNumber": "Include at least one number.",
+    "passwordMismatch": "Passwords do not match.",
+    "passwordSame": "The new password must be different from the current one.",
+    "incorrectPassword": "The current password is incorrect.",
+    "invalidEmail": "Enter a valid email address.",
+    "emailInUse": "An account with this email already exists."
   }
 }

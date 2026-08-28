@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getProfile } from '@/actions/auth';
+import { ChangeMyPassword } from '@/components/profile/change-my-password';
 import { ProfileEditor } from '@/components/profile/profile-editor';
 import type { UserRole } from '@/types/database.types';
 
@@ -39,6 +40,8 @@ export default async function ProfilePage({ params }: Props) {
         avatarUrl={profile.avatar_url}
         isActive={profile.is_active}
       />
+
+      <ChangeMyPassword />
     </div>
   );
 }

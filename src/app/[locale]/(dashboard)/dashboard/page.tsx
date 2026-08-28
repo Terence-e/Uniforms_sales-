@@ -43,19 +43,20 @@ export default async function DashboardHome({ params }: Props) {
   const today = new Date();
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-  const [profile, t, summary, monthly, recent, stock, users] = await Promise.all([
-    getProfile(),
+  // Cached from the layout's call -- effectively free here.
+  const profile = await getProfile();
+  if (!profile) return null;
+  const role = profile.role as UserRole;
+
+  const [t, summary, monthly, recent, stock, users] = await Promise.all([
     getTranslations('Dashboard'),
     getSalesSummary(toDateInputValue(monthStart), toDateInputValue(today)),
     getMonthlySales(8),
     listRecentSales(6),
     listStock(),
-    countActiveUsers()
+    // Only the Super Admin tile shows this -- skip the query for everyone else.
+    role === 'super_admin' ? countActiveUsers() : Promise.resolve(0)
   ]);
-
-  if (!profile) return null;
-
-  const role = profile.role as UserRole;
   const name = profile.full_name || profile.email;
   const lowItems = stock.filter((p) => p.reorderLevel > 0 && p.quantity <= p.reorderLevel);
   const isReadOnly = role === 'administration';

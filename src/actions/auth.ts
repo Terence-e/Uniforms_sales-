@@ -1,10 +1,15 @@
 'use server';
 
+import { cache } from 'react';
 import { revalidatePath } from 'next/cache';
 import { getLocale } from 'next-intl/server';
+import { createClient as createSupabaseJsClient } from '@supabase/supabase-js';
 import { redirect } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { requireSupabaseEnv } from '@/lib/supabase/env';
 import {
+  changePasswordSchema,
   emptyLoginState,
   loginSchema,
   type LoginState
@@ -55,6 +60,102 @@ export async function signIn(
   return emptyLoginState;
 }
 
+/**
+ * A signed-out user asks for a password reset. Per A-FR-3.5 there is no
+ * self-service email reset: instead every active Super Admin is notified in-app
+ * and issues a temporary password. Always resolves the same way regardless of
+ * whether the address exists, so the form can't be used to enumerate accounts.
+ */
+export async function requestPasswordReset(email: string): Promise<{ ok: true }> {
+  const clean = email.trim().toLowerCase();
+  if (clean.includes('@')) {
+    try {
+      const admin = createAdminClient();
+      const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      const target = list?.users.find((u) => u.email?.toLowerCase() === clean);
+      if (target) {
+        const { data: admins } = await admin
+          .from('profiles')
+          .select('id')
+          .eq('role', 'super_admin')
+          .eq('is_active', true);
+        const ids = (admins ?? []).map((a) => a.id);
+        if (ids.length > 0) {
+          await admin.from('notifications').insert(
+            ids.map((user_id) => ({
+              user_id,
+              type: 'password_reset_request',
+              link: '/accounts',
+              data: { email: clean, targetUserId: target.id }
+            }))
+          );
+        }
+      }
+    } catch {
+      // Never surface an error to the requester.
+    }
+  }
+  return { ok: true };
+}
+
+export type ChangePasswordResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error?: string;
+      fieldErrors?: { current?: string; password?: string; confirm?: string };
+    };
+
+/**
+ * Sets a new password for the signed-in user and clears the forced-change flag
+ * (must_change_password). The current password must be supplied and is verified
+ * first. Everything is re-checked on the server, not trusted from the client.
+ */
+export async function changePassword(input: {
+  current: string;
+  password: string;
+  confirm: string;
+}): Promise<ChangePasswordResult> {
+  const parsed = changePasswordSchema.safeParse(input);
+  if (!parsed.success) {
+    const fieldErrors: { current?: string; password?: string; confirm?: string } = {};
+    for (const issue of parsed.error.issues) {
+      const field = issue.path[0];
+      if (field === 'current' || field === 'password' || field === 'confirm') {
+        fieldErrors[field] ??= issue.message;
+      }
+    }
+    return { ok: false, fieldErrors };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user?.email) return { ok: false, error: 'unauthorized' };
+
+  // Verify the current password with a throwaway client so we don't disturb the
+  // live session cookies. A failed sign-in means the current password is wrong.
+  const { url, anonKey } = requireSupabaseEnv();
+  const verifier = createSupabaseJsClient(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+  const { error: verifyErr } = await verifier.auth.signInWithPassword({
+    email: user.email,
+    password: parsed.data.current
+  });
+  if (verifyErr) return { ok: false, fieldErrors: { current: 'incorrectPassword' } };
+
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.password,
+    data: { ...user.user_metadata, must_change_password: false }
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/', 'layout');
+  return { ok: true };
+}
+
 export async function signOut(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
@@ -64,8 +165,9 @@ export async function signOut(): Promise<void> {
   redirect({ href: '/login', locale });
 }
 
-/** The signed-in user's profile, or null. Used by the dashboard shell. */
-export async function getProfile() {
+// Memoised per request: the layout, the page and any actions in the same render
+// share a single auth + profile round-trip instead of repeating it each time.
+const loadProfile = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user }
@@ -80,6 +182,11 @@ export async function getProfile() {
 
   if (!data) return null;
   return { ...data, email: user.email ?? '' };
+});
+
+/** The signed-in user's profile, or null. Used by the dashboard shell. */
+export async function getProfile() {
+  return loadProfile();
 }
 
 export type UpdateProfileResult = { ok: true } | { ok: false; error: string };
