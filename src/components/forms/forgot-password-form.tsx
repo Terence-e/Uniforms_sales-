@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { AtSignIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
+import { requestPasswordReset } from '@/actions/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +14,7 @@ export function ForgotPasswordForm() {
   const t = useTranslations('ForgotPassword');
   const [pending, setPending] = useState(false);
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
     const email = String(new FormData(form).get('email') ?? '').trim();
@@ -22,14 +23,13 @@ export function ForgotPasswordForm() {
       return;
     }
     setPending(true);
-    // Per A-FR-3.5 there is no self-service email reset: the Super Admin issues a
-    // temporary password. We acknowledge in-app without revealing whether the
-    // address exists, and leave the real notification to a later feature.
-    window.setTimeout(() => {
-      setPending(false);
-      toast.success(t('success'));
-      form.reset();
-    }, 600);
+    // Per A-FR-3.5 there is no self-service email reset: this notifies every Super
+    // Admin in-app so they can issue a temporary password. The response is the
+    // same whether or not the address exists (no account enumeration).
+    await requestPasswordReset(email);
+    setPending(false);
+    toast.success(t('success'));
+    form.reset();
   }
 
   return (

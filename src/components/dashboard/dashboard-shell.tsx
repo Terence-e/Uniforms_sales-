@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { MenuIcon, XIcon, LogOutIcon, BellIcon, SearchIcon } from 'lucide-react';
+import { MenuIcon, XIcon, LogOutIcon, SearchIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Link, usePathname } from '@/i18n/navigation';
 import { signOut } from '@/actions/auth';
 import { SchoolLogo } from '@/components/brand/school-logo';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { NotificationBell } from '@/components/dashboard/notification-bell';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -100,16 +101,10 @@ export function DashboardShell({
           <div className="ml-auto flex items-center gap-1.5">
             <LanguageSwitcher />
             <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('notifications')}
-              onClick={() => toast.info(t('notificationsEmpty'))}
-            >
-              <BellIcon className="size-5" />
-            </Button>
+            <NotificationBell />
             <Link
               href="/profile"
+              prefetch={false}
               title={`${userName} · ${roleLabel}`}
               className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-sm font-semibold text-primary ring-1 ring-border transition hover:ring-primary/50"
             >
@@ -197,6 +192,7 @@ function SidebarContent({
                   key={item.key}
                   href={item.href}
                   onClick={onNavigate}
+                  prefetch={false}
                   aria-current={active ? 'page' : undefined}
                   className={cls}
                 >

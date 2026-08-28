@@ -1,5 +1,7 @@
 import { SchoolLogo } from '@/components/brand/school-logo';
 import { SupportButton } from '@/components/auth/support-button';
+import { LanguageSwitcher } from '@/components/language-switcher';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { SCHOOL } from '@/lib/format';
 
 /** Shared frame for the login / forgot-password screens: faded grid background,
@@ -18,7 +20,11 @@ export function AuthShell({
 
       <header className="relative z-10 flex items-center justify-between gap-4 px-6 py-5 sm:px-10">
         <SchoolLogo size="sm" />
-        {topRight}
+        <div className="flex items-center gap-2">
+          {topRight}
+          <LanguageSwitcher />
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-6">

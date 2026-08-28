@@ -35,6 +35,17 @@ export async function proxy(request: NextRequest) {
     (path) => pathname === path || pathname.startsWith(`${path}/`)
   );
 
+  // First-login gate (A-FR-3.2): a signed-in user still carrying the
+  // must_change_password flag is forced onto /change-password and can reach
+  // nothing else until it is cleared. Server-side, so the UI cannot skip it.
+  if (
+    user &&
+    user.user_metadata?.must_change_password === true &&
+    pathname !== '/change-password'
+  ) {
+    return NextResponse.redirect(new URL(`/${locale}/change-password`, request.url));
+  }
+
   if (!user && !isPublic) {
     const loginUrl = new URL(`/${locale}/login`, request.url);
     if (pathname !== '/') {

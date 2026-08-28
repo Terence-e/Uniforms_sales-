@@ -40,6 +40,68 @@
     "success": "Si ce compte existe, votre administrateur a \u00e9t\u00e9 notifi\u00e9.",
     "invalidEmail": "Saisissez une adresse e-mail valide."
   },
+  "ChangePassword": {
+    "title": "D\u00e9finir un nouveau mot de passe",
+    "subtitle": "Vous devez changer votre mot de passe temporaire avant de continuer.",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "hint": "Au moins 8 caract\u00e8res, dont une lettre et un chiffre.",
+    "show": "Afficher le mot de passe",
+    "hide": "Masquer le mot de passe",
+    "strengthWeak": "Faible",
+    "strengthFair": "Moyen",
+    "strengthStrong": "Fort",
+    "submit": "Mettre \u00e0 jour le mot de passe",
+    "submitting": "Mise \u00e0 jour\u2026",
+    "success": "Mot de passe mis \u00e0 jour.",
+    "error": "Impossible de mettre \u00e0 jour votre mot de passe."
+  },
+  "Accounts": {
+    "title": "Comptes utilisateurs",
+    "subtitle": "Cr\u00e9ez des comptes et attribuez un r\u00f4le. Les comptes sont cr\u00e9\u00e9s uniquement ici \u2014 aucune inscription publique.",
+    "createHeading": "Cr\u00e9er un compte",
+    "listHeading": "Comptes",
+    "fullName": "Nom complet",
+    "email": "Adresse e-mail",
+    "role": "R\u00f4le",
+    "tempPassword": "Mot de passe temporaire",
+    "generate": "G\u00e9n\u00e9rer un nouveau mot de passe",
+    "createBtn": "Cr\u00e9er le compte",
+    "creating": "Cr\u00e9ation\u2026",
+    "createdTitle": "Compte cr\u00e9\u00e9",
+    "createdBody": "Partagez ces identifiants avec l'utilisateur de fa\u00e7on s\u00e9curis\u00e9e. Il devra changer le mot de passe \u00e0 la premi\u00e8re connexion.",
+    "copy": "Copier",
+    "copied": "Copi\u00e9.",
+    "done": "Termin\u00e9",
+    "status": "Statut",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "mustChange": "Doit changer le mot de passe",
+    "forbidden": "Seul un Super Admin peut cr\u00e9er des comptes.",
+    "unauthorized": "Vous n'\u00eates pas connect\u00e9.",
+    "createFailed": "Impossible de cr\u00e9er le compte.",
+    "actions": "Actions",
+    "resetPassword": "R\u00e9initialiser le mot de passe",
+    "resetFailed": "Impossible de r\u00e9initialiser le mot de passe.",
+    "resetDoneTitle": "Mot de passe temporaire d\u00e9fini",
+    "resetDoneBody": "Partagez-le avec {name} de fa\u00e7on s\u00e9curis\u00e9e. Il devra le changer \u00e0 la prochaine connexion."
+  },
+  "Notifications": {
+    "title": "Notifications",
+    "empty": "Aucune notification.",
+    "seeAll": "Voir toutes les notifications",
+    "allTitle": "Toutes les notifications",
+    "clearAll": "Tout effacer",
+    "delete": "Supprimer",
+    "markAllRead": "Tout marquer comme lu",
+    "close": "Fermer",
+    "generic": "Notification",
+    "passwordResetRequest": {
+      "title": "R\u00e9initialisation de mot de passe demand\u00e9e",
+      "body": "{email} a besoin d'un nouveau mot de passe. Ouvrez Comptes pour en d\u00e9finir un temporaire."
+    }
+  },
   "Profile": {
     "title": "Mon profil",
     "subtitle": "Les informations de votre compte.",
@@ -62,7 +124,8 @@
     "nameRequired": "Le nom est obligatoire.",
     "imageTooLarge": "Cette image est trop volumineuse.",
     "updateError": "Impossible de mettre \u00e0 jour votre profil.",
-    "notAnImage": "Veuillez choisir un fichier image."
+    "notAnImage": "Veuillez choisir un fichier image.",
+    "changePassword": "Changer mon mot de passe"
   },
   "Dashboard": {
     "title": "Tableau de bord",
@@ -222,6 +285,14 @@
     "minItems": "Ajoutez au moins un article.",
     "positive": "Saisissez un nombre sup\u00e9rieur \u00e0 z\u00e9ro.",
     "nonNegative": "Saisissez z\u00e9ro ou plus.",
-    "discountTooLarge": "La remise ne peut d\u00e9passer le sous-total."
+    "discountTooLarge": "La remise ne peut d\u00e9passer le sous-total.",
+    "passwordShort": "Utilisez au moins 8 caract\u00e8res.",
+    "passwordLetter": "Incluez au moins une lettre.",
+    "passwordNumber": "Incluez au moins un chiffre.",
+    "passwordMismatch": "Les mots de passe ne correspondent pas.",
+    "passwordSame": "Le nouveau mot de passe doit \u00eatre diff\u00e9rent de l'actuel.",
+    "incorrectPassword": "Le mot de passe actuel est incorrect.",
+    "invalidEmail": "Saisissez une adresse e-mail valide.",
+    "emailInUse": "Un compte avec cet e-mail existe d\u00e9j\u00e0."
   }
 }
