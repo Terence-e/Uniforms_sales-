@@ -44,6 +44,10 @@ export function CreateAccountForm() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('seller');
+  // `genPassword` uses Math.random, so the server and client necessarily seed
+  // different suggestions. We generate one during render (no empty-then-filled
+  // flash) and let the client value win; `suppressHydrationWarning` on the input
+  // silences the expected value mismatch. The admin can regenerate at will.
   const [password, setPassword] = useState(genPassword);
   const [pending, setPending] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -137,6 +141,7 @@ export function CreateAccountForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 aria-invalid={Boolean(errors.password)}
                 className="font-mono"
+                suppressHydrationWarning
               />
               <Button
                 type="button"

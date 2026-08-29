@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useTransition } from 'react';
+import { useId, useMemo, useTransition } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { useLocale, useTranslations } from 'next-intl';
@@ -61,6 +61,10 @@ export function OrderForm({ products }: { products: ProductOption[] }) {
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  // Stable base for per-line element ids. react-hook-form's `field.id` is fine
+  // as a React key but is regenerated independently on the server and client,
+  // so rendering it into `id`/`htmlFor` breaks hydration. `useId` is SSR-safe.
+  const fieldIdBase = useId();
 
   const form = useForm<OrderInput>({
     resolver: standardSchemaResolver(orderSchema),
@@ -318,7 +322,7 @@ export function OrderForm({ products }: { products: ProductOption[] }) {
                     as NULL (A-FR-9.5). */}
                 <div className="flex items-center gap-2 border-t pt-3 sm:col-span-12">
                   <Checkbox
-                    id={`handedOver-${field.id}`}
+                    id={`${fieldIdBase}-handedOver-${index}`}
                     checked={Boolean(watchedItems?.[index]?.handedOver)}
                     onCheckedChange={(checked) =>
                       setValue(`items.${index}.handedOver`, checked === true, {
@@ -327,7 +331,7 @@ export function OrderForm({ products }: { products: ProductOption[] }) {
                     }
                   />
                   <Label
-                    htmlFor={`handedOver-${field.id}`}
+                    htmlFor={`${fieldIdBase}-handedOver-${index}`}
                     className="text-xs font-normal text-muted-foreground"
                   >
                     {t('handedOverNow')}
