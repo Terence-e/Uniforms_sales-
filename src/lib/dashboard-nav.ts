@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   UserRound,
   ShoppingCart,
+  PackagePlus,
   ClipboardList,
   Boxes,
   RefreshCcw,
@@ -34,6 +35,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { key: 'profile', href: '/profile', icon: UserRound, section: 'overview', roles: ALL },
 
   { key: 'sales', href: '/sales', icon: ShoppingCart, section: 'operations', roles: ALL },
+  { key: 'orders', href: '/orders', icon: PackagePlus, section: 'operations', roles: ALL },
   { key: 'openJobs', icon: ClipboardList, section: 'operations', roles: ALL },
   { key: 'production', href: '/stock', icon: Boxes, section: 'operations', roles: ALL },
   { key: 'returns', icon: RefreshCcw, section: 'operations', roles: OPERATORS },
