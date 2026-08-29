@@ -5,7 +5,7 @@ import { LoginForm } from '@/components/forms/login-form';
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ redirectTo?: string }>;
+  searchParams: Promise<{ redirectTo?: string; expired?: string }>;
 };
 
 export async function generateMetadata({ params }: Props) {
@@ -18,7 +18,7 @@ export default async function LoginPage({ params, searchParams }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { redirectTo } = await searchParams;
+  const { redirectTo, expired } = await searchParams;
   const t = await getTranslations('Login');
 
   // Only ever accept a same-origin path -- an absolute URL here would turn the
@@ -35,6 +35,12 @@ export default async function LoginPage({ params, searchParams }: Props) {
           </span>
           <h1 className="text-xl font-semibold tracking-tight">{t('heading')}</h1>
         </div>
+
+        {expired && (
+          <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-700 dark:text-amber-400">
+            {t('sessionExpired')}
+          </div>
+        )}
 
         <div className="mt-7">
           <LoginForm redirectTo={safeRedirect} />

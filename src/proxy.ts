@@ -35,6 +35,38 @@ export async function proxy(request: NextRequest) {
     (path) => pathname === path || pathname.startsWith(`${path}/`)
   );
 
+  // Per-role session timeout (A-FR-3.4): 12h for the Seller, 2h for everyone
+  // else, measured from the `session_started` stamp set at login. Role comes from
+  // the JWT (app_metadata) so this needs no DB query. On expiry we clear the
+  // auth cookies and bounce to login with an "expired" notice.
+  if (user) {
+    const role = (user.app_metadata?.role as string | undefined) ?? '';
+    const limitMs = role === 'seller' ? 12 * 60 * 60 * 1000 : 2 * 60 * 60 * 1000;
+    const startedRaw = request.cookies.get('session_started')?.value;
+    const started = startedRaw ? Number(startedRaw) : NaN;
+
+    if (Number.isFinite(started) && Date.now() - started > limitMs) {
+      const url = new URL(`/${locale}/login`, request.url);
+      url.searchParams.set('expired', '1');
+      const expired = NextResponse.redirect(url);
+      for (const cookie of request.cookies.getAll()) {
+        if (cookie.name.startsWith('sb-')) expired.cookies.delete(cookie.name);
+      }
+      expired.cookies.delete('session_started');
+      return expired;
+    }
+
+    if (!Number.isFinite(started)) {
+      // Session that predates this feature: start its clock now.
+      response.cookies.set('session_started', String(Date.now()), {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+      });
+    }
+  }
+
   // First-login gate (A-FR-3.2): a signed-in user still carrying the
   // must_change_password flag is forced onto /change-password and can reach
   // nothing else until it is cleared. Server-side, so the UI cannot skip it.

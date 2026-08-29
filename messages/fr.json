@@ -102,6 +102,21 @@
       "body": "{email} a besoin d'un nouveau mot de passe. Ouvrez Comptes pour en d\u00e9finir un temporaire."
     }
   },
+  "Audit": {
+    "title": "Journal d'audit",
+    "subtitle": "Chaque action enregistr\u00e9e, y compris les \u00e9checs de connexion. En ajout seul.",
+    "recent": "Entr\u00e9es r\u00e9centes",
+    "empty": "Aucune entr\u00e9e pour le moment.",
+    "time": "Heure",
+    "action": "Action",
+    "actor": "Compte",
+    "ip": "IP",
+    "actions": {
+      "login_failed": "\u00c9chec de connexion",
+      "login_blocked": "Connexion bloqu\u00e9e",
+      "login_success": "Connect\u00e9"
+    }
+  },
   "Profile": {
     "title": "Mon profil",
     "subtitle": "Les informations de votre compte.",
@@ -200,7 +215,9 @@
     "submit": "Se connecter",
     "submitting": "Connexion\u2026",
     "invalidCredentials": "E-mail ou mot de passe incorrect.",
-    "unexpectedError": "Une erreur est survenue. Veuillez r\u00e9essayer."
+    "unexpectedError": "Une erreur est survenue. Veuillez r\u00e9essayer.",
+    "tooManyAttempts": "Trop de tentatives \u00e9chou\u00e9es. R\u00e9essayez dans quelques minutes.",
+    "sessionExpired": "Votre session a expir\u00e9. Veuillez vous reconnecter."
   },
   "Sales": {
     "title": "Nouvelle vente",
