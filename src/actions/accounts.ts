@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logAudit } from '@/lib/audit';
 import { createAccountSchema, type CreateAccountInput } from '@/lib/validation/auth-schema';
 
 export type CreateAccountResult =
@@ -70,6 +71,15 @@ export async function createAccount(
     .upsert({ id: created.user.id, full_name, role, is_active: true }, { onConflict: 'id' });
   if (pErr) return { ok: false, error: pErr.message };
 
+  // Audited (A-FR-11.1). The temporary password is never recorded.
+  await logAudit({
+    actorId: user.id,
+    action: 'account_created',
+    targetTable: 'profiles',
+    targetId: created.user.id,
+    newValue: { email, full_name, role }
+  });
+
   revalidatePath('/', 'layout');
   return { ok: true, email };
 }
@@ -122,6 +132,14 @@ export async function resetUserPassword(userId: string): Promise<ResetPasswordRe
     .update({ is_read: true })
     .eq('type', 'password_reset_request')
     .contains('data', { targetUserId: userId });
+
+  // Audited (A-FR-11.1). The new temporary password is never recorded.
+  await logAudit({
+    actorId: user.id,
+    action: 'account_password_reset',
+    targetTable: 'profiles',
+    targetId: userId
+  });
 
   revalidatePath('/', 'layout');
   return { ok: true, password };

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { logAudit } from '@/lib/audit';
 import {
   computeLineTotal,
   computeTotals,
@@ -87,6 +88,24 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
     await supabase.from('sales').delete().eq('id', inserted.id);
     return { ok: false, error: itemsError.message };
   }
+
+  // Audited (A-FR-11.1). Records the receipt, totals and line count -- enough to
+  // reconstruct what was sold without duplicating the whole basket.
+  await logAudit({
+    actorId: user.id,
+    action: 'sale_created',
+    targetTable: 'sales',
+    targetId: inserted.id,
+    newValue: {
+      receipt_no: inserted.receipt_no,
+      customer_name: sale.customerName,
+      subtotal,
+      discount,
+      total,
+      payment_method: sale.paymentMethod,
+      item_count: sale.items.length
+    }
+  });
 
   revalidatePath('/sales', 'page');
   return { ok: true, saleId: inserted.id, receiptNo: inserted.receipt_no };
@@ -184,12 +203,22 @@ export async function exportSalesToExcel(
     schoolName: SCHOOL.name
   });
 
+  const total = sales.reduce((sum, sale) => sum + sale.total, 0);
+
+  // Generating an export is audited (A-FR-11.1, B-FR-11.4).
+  await logAudit({
+    actorId: user.id,
+    action: 'export_generated',
+    targetTable: 'sales',
+    newValue: { report: 'sales', from, to, count: sales.length, total }
+  });
+
   return {
     ok: true,
     filename: salesReportFilename(from, to),
     base64: Buffer.from(workbookToUint8Array(workbook)).toString('base64'),
     count: sales.length,
-    total: sales.reduce((sum, sale) => sum + sale.total, 0)
+    total
   };
 }
 
