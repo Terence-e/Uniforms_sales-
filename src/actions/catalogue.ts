@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logAudit } from '@/lib/audit';
 import { productSchema, type ProductInput } from '@/lib/validation/catalogue-schema';
 
 type FieldErrors = Partial<
@@ -111,6 +112,14 @@ export async function createProduct(
     .from('stock_levels')
     .upsert({ product_id: created.id, reorder_level }, { onConflict: 'product_id' });
 
+  await logAudit({
+    actorId: uid,
+    action: 'product_created',
+    targetTable: 'products',
+    targetId: created.id,
+    newValue: { name_en, name_fr: name_fr || name_en, category, size, unit_price, reorder_level }
+  });
+
   revalidatePath('/', 'layout');
   return { ok: true };
 }
@@ -127,7 +136,7 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
 
   const { data: current } = await admin
     .from('products')
-    .select('unit_price')
+    .select('name_en, name_fr, size, category, unit_price')
     .eq('id', id)
     .single();
   if (!current) return { ok: false, error: 'notFound' };
@@ -138,15 +147,36 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
 
+  const priceChanged = Number(current.unit_price) !== unit_price;
+
   // Price change flow (A-FR-4.5): record old/new/who/when.
-  if (Number(current.unit_price) !== unit_price) {
+  if (priceChanged) {
     await admin.from('product_prices_history').insert({
       product_id: id,
       old_price: current.unit_price,
       new_price: unit_price,
       changed_by: uid
     });
+    // A price change is its own audited event (A-FR-11.1).
+    await logAudit({
+      actorId: uid,
+      action: 'price_changed',
+      targetTable: 'products',
+      targetId: id,
+      previousValue: { unit_price: Number(current.unit_price) },
+      newValue: { unit_price }
+    });
   }
+
+  // The edit itself is audited too, with the full before/after.
+  await logAudit({
+    actorId: uid,
+    action: 'product_updated',
+    targetTable: 'products',
+    targetId: id,
+    previousValue: current,
+    newValue: { name_en, name_fr: name_fr || name_en, size, category, unit_price }
+  });
 
   await admin
     .from('stock_levels')
@@ -165,6 +195,15 @@ export async function setProductActive(id: string, active: boolean): Promise<Pro
   const admin = createAdminClient();
   const { error } = await admin.from('products').update({ is_active: active }).eq('id', id);
   if (error) return { ok: false, error: error.message };
+
+  await logAudit({
+    actorId: uid,
+    action: active ? 'product_restored' : 'product_archived',
+    targetTable: 'products',
+    targetId: id,
+    previousValue: { is_active: !active },
+    newValue: { is_active: active }
+  });
 
   revalidatePath('/', 'layout');
   return { ok: true };
