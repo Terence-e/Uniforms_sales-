@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -311,27 +310,6 @@ export function OrderForm({ products }: { products: ProductOption[] }) {
                   >
                     <Trash2 className="size-4" />
                   </Button>
-                </div>
-
-                {/* A ticked line goes home with the parent today and never
-                    enters the status workflow -- the server stores its status
-                    as NULL (A-FR-9.5). */}
-                <div className="flex items-center gap-2 border-t pt-3 sm:col-span-12">
-                  <Checkbox
-                    id={`handedOver-${field.id}`}
-                    checked={Boolean(watchedItems?.[index]?.handedOver)}
-                    onCheckedChange={(checked) =>
-                      setValue(`items.${index}.handedOver`, checked === true, {
-                        shouldDirty: true
-                      })
-                    }
-                  />
-                  <Label
-                    htmlFor={`handedOver-${field.id}`}
-                    className="text-xs font-normal text-muted-foreground"
-                  >
-                    {t('handedOverNow')}
-                  </Label>
                 </div>
               </div>
             );
