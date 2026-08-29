@@ -111,6 +111,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      product_prices_history: {
+        Row: {
+          id: string;
+          product_id: string;
+          old_price: number | null;
+          new_price: number;
+          changed_by: string | null;
+          note: string | null;
+          changed_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          old_price?: number | null;
+          new_price: number;
+          changed_by?: string | null;
+          note?: string | null;
+          changed_at?: string;
+        };
+        Update: {
+          id?: string;
+          product_id?: string;
+          old_price?: number | null;
+          new_price?: number;
+          changed_by?: string | null;
+          note?: string | null;
+          changed_at?: string;
+        };
+        Relationships: [];
+      };
       products: {
         Row: {
           id: string;
