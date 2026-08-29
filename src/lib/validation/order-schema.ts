@@ -119,3 +119,26 @@ export const cancelLineSchema = z.object({
 export type AdvanceLineInput = z.input<typeof advanceLineSchema>;
 export type RevertLineInput = z.input<typeof revertLineSchema>;
 export type CancelLineInput = z.input<typeof cancelLineSchema>;
+
+// ------------------------------------------------------------- collection
+
+/**
+ * Recording a collection (A-FR-9.7). At least one line, a named collector, and
+ * the member of staff who handed the garments over.
+ *
+ * The collector is free text and required: it is the only record of who
+ * actually walked out with the uniform, and it is regularly not the parent who
+ * placed the order.
+ */
+export const collectionSchema = z.object({
+  orderId: z.uuid({ message: 'required' }),
+  lineIds: z.array(z.uuid({ message: 'required' })).min(1, { message: 'selectLines' }),
+  collectorName: z
+    .string({ message: 'required' })
+    .trim()
+    .min(2, { message: 'required' })
+    .max(120),
+  handedOverBy: z.uuid({ message: 'required' })
+});
+
+export type CollectionInput = z.input<typeof collectionSchema>;

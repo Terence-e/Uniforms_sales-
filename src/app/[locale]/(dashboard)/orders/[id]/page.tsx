@@ -1,7 +1,13 @@
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import { getOrderWithItems } from '@/actions/orders';
+import {
+  getOrderWithItems,
+  listCollectionsForOrder,
+  listStaff
+} from '@/actions/orders';
+import { getProfile } from '@/actions/auth';
+import { CollectionPanel } from '@/components/orders/collection-panel';
 import { LineStatusControls } from '@/components/orders/line-status-controls';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,10 +33,19 @@ export default async function OrderDetailPage({ params }: Props) {
   const order = await getOrderWithItems(id);
   if (!order) notFound();
 
-  const t = await getTranslations('Orders');
-  const tSales = await getTranslations('Sales');
+  const [t, tSales, tCol, staff, collections, profile] = await Promise.all([
+    getTranslations('Orders'),
+    getTranslations('Sales'),
+    getTranslations('Collection'),
+    listStaff(),
+    listCollectionsForOrder(order.id),
+    getProfile()
+  ]);
 
   const items = order.items ?? [];
+  // Only Ready lines can be handed over: anything earlier has not been made,
+  // and anything later has already left or been cancelled.
+  const collectable = items.filter((item) => item.status === 'ready');
   const overall = deriveOrderStatus(items.map((item) => item.status));
 
   return (
@@ -75,6 +90,51 @@ export default async function OrderDetailPage({ params }: Props) {
           ) : null}
         </CardContent>
       </Card>
+
+      {profile ? (
+        <CollectionPanel
+          orderId={order.id}
+          lines={collectable.map((line) => ({
+            id: line.id,
+            description: line.description,
+            size: line.size,
+            quantity: line.quantity,
+            line_total: line.line_total
+          }))}
+          staff={staff}
+          currentUserId={profile.id}
+          locale={locale}
+        />
+      ) : null}
+
+      {collections.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">{tCol('previous')}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {collections.map((collection) => (
+              <div
+                key={collection.id}
+                className="flex flex-wrap items-center justify-between gap-2 border-b pb-2 text-sm last:border-0 last:pb-0"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary" className="font-mono text-[0.7rem]">
+                    {collection.col_no}
+                  </Badge>
+                  <span className="text-muted-foreground">
+                    {collection.collector_name} ·{' '}
+                    {formatDateTime(collection.collected_at, locale)}
+                  </span>
+                </div>
+                <Button asChild variant="link" size="sm" className="h-auto p-0">
+                  <Link href={`/collections/${collection.id}`}>{tCol('viewSlip')}</Link>
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

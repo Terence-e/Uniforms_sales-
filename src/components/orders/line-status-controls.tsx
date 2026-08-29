@@ -72,7 +72,12 @@ export function LineStatusControls({ lineId, status }: Props) {
     );
   }
 
-  const forward = nextStatus(status);
+  // Collection is NOT a one-tap move. Reaching 'collected' means goods left the
+  // shop, which needs a COL slip, a named collector and a stock deduction
+  // (A-FR-9.7) -- so the last step is driven by the collection panel, not by a
+  // button here. Everything before it stays one tap.
+  const step = nextStatus(status);
+  const forward = step === 'collected' ? null : step;
   const back = previousStatus(status);
 
   function run(action: () => Promise<{ ok: boolean; error?: string }>) {
@@ -125,6 +130,10 @@ export function LineStatusControls({ lineId, status }: Props) {
                   button. */}
               {t('advanceTo', { status: t(`status.${forward}`) })}
             </Button>
+          ) : null}
+
+          {step === 'collected' ? (
+            <span className="text-xs text-muted-foreground">{t('collectViaPanel')}</span>
           ) : null}
 
           {back ? (
