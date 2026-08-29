@@ -76,6 +76,9 @@ export default async function OrdersPage({ params }: Props) {
                     {formatMoney(order.total, locale)}
                   </span>
                   <Button asChild variant="link" size="sm" className="h-auto p-0">
+                    <Link href={`/orders/${order.id}`}>{t('viewOrder')}</Link>
+                  </Button>
+                  <Button asChild variant="link" size="sm" className="h-auto p-0">
                     <Link href={`/orders/${order.id}/receipt`}>{t('viewReceipt')}</Link>
                   </Button>
                 </div>

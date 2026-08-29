@@ -5,7 +5,7 @@ import { Printer, ArrowLeft } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { formatDate, formatDateTime, formatMoney, SCHOOL } from '@/lib/format';
-import type { PaymentMethod } from '@/types/database.types';
+import type { OrderStatus, PaymentMethod } from '@/types/database.types';
 
 export type ReceiptData = {
   /**
@@ -19,6 +19,13 @@ export type ReceiptData = {
   /** Orders only. */
   expected_ready_date?: string | null;
   measurements?: string | null;
+  /**
+   * The order's derived status, so a REPRINT tells the truth. The stamp used to
+   * be hard-coded "not yet collected", which was safe only while nothing could
+   * reach 'collected'. Now that a line can, a reprinted sheet must not keep
+   * insisting the garment is still in the shop.
+   */
+  order_status?: OrderStatus | null;
   sold_at: string;
   customer_name: string;
   student_name: string | null;
@@ -106,10 +113,19 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
                A-FR-9.3. */
             <div className="mt-2 border-2 border-black px-3 py-2">
               <p className="text-base font-bold uppercase tracking-wide">
-                Commande / Order
+                {receipt.order_status === 'cancelled'
+                  ? 'Commande annulée / Order cancelled'
+                  : 'Commande / Order'}
               </p>
               <p className="text-[0.7rem] font-semibold uppercase">
-                Pas encore retiré · Not yet collected
+                {/* null means no line was ever outstanding -- every item went
+                    home at the counter -- so it reads as collected, not as
+                    something still owed. */}
+                {receipt.order_status === 'collected' || receipt.order_status == null
+                  ? 'Retiré · Collected'
+                  : receipt.order_status === 'cancelled'
+                    ? 'Remboursée · Refunded'
+                    : 'Pas encore retiré · Not yet collected'}
               </p>
             </div>
           ) : (

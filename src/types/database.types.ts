@@ -383,7 +383,6 @@ export type Database = {
           order_no: string;
           ordered_at: string;
           expected_ready_date: string | null;
-          status: OrderStatus;
           customer_name: string;
           student_name: string | null;
           class_level: string | null;
@@ -403,7 +402,6 @@ export type Database = {
           order_no?: string;
           ordered_at?: string;
           expected_ready_date?: string | null;
-          status?: OrderStatus;
           customer_name: string;
           student_name?: string | null;
           class_level?: string | null;
@@ -423,7 +421,6 @@ export type Database = {
           order_no?: string;
           ordered_at?: string;
           expected_ready_date?: string | null;
-          status?: OrderStatus;
           customer_name?: string;
           student_name?: string | null;
           class_level?: string | null;
@@ -458,6 +455,11 @@ export type Database = {
           quantity: number;
           line_total: number;
           created_at: string;
+          status: OrderStatus | null;
+          status_reason: string | null;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+          refund_method: PaymentMethod | null;
         };
         Insert: {
           id?: string;
@@ -469,6 +471,11 @@ export type Database = {
           quantity: number;
           line_total: number;
           created_at?: string;
+          status?: OrderStatus | null;
+          status_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          refund_method?: PaymentMethod | null;
         };
         Update: {
           id?: string;
@@ -480,12 +487,23 @@ export type Database = {
           quantity?: number;
           line_total?: number;
           created_at?: string;
+          status?: OrderStatus | null;
+          status_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          refund_method?: PaymentMethod | null;
         };
         Relationships: [
           {
             foreignKeyName: 'order_items_order_id_fkey';
             columns: ['order_id'];
             referencedRelation: 'orders';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'order_items_cancelled_by_fkey';
+            columns: ['cancelled_by'];
+            referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
           {
@@ -513,6 +531,7 @@ export type Database = {
       next_receipt_no: { Args: Record<string, never>; Returns: string };
       count_active_users: { Args: Record<string, never>; Returns: number };
       next_reference: { Args: { p_prefix: string }; Returns: string };
+      order_status_rank: { Args: { s: OrderStatus }; Returns: number };
     };
     Enums: {
       user_role: UserRole;
