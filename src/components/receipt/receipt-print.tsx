@@ -4,11 +4,21 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Printer, ArrowLeft } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
-import { formatDateTime, formatMoney, SCHOOL } from '@/lib/format';
+import { formatDate, formatDateTime, formatMoney, SCHOOL } from '@/lib/format';
 import type { PaymentMethod } from '@/types/database.types';
 
 export type ReceiptData = {
+  /**
+   * 'order' prints the same sheet stamped COMMANDE / ORDER and adds the
+   * expected-ready and measurements rows. The print geometry is shared on
+   * purpose -- one @page rule to check against the real printer, not two.
+   */
+  kind?: 'sale' | 'order';
+  /** Carries `order_no` when kind is 'order'; the label switches with it. */
   receipt_no: string;
+  /** Orders only. */
+  expected_ready_date?: string | null;
+  measurements?: string | null;
   sold_at: string;
   customer_name: string;
   student_name: string | null;
@@ -42,6 +52,7 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
   const t = useTranslations('Receipt');
   const tPayment = useTranslations('Sales.payment');
   const locale = useLocale();
+  const isOrder = receipt.kind === 'order';
 
   return (
     <>
@@ -66,9 +77,9 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
 
       <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
         <Button asChild variant="ghost" size="sm">
-          <Link href="/sales">
+          <Link href={isOrder ? '/orders' : '/sales'}>
             <ArrowLeft className="size-4" />
-            {t('back')}
+            {isOrder ? t('backToOrders') : t('back')}
           </Link>
         </Button>
         <Button size="sm" onClick={() => window.print()}>
@@ -88,12 +99,37 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
           {SCHOOL.phone ? (
             <p className="text-xs text-neutral-600">{SCHOOL.phone}</p>
           ) : null}
-          <p className="mt-2 text-sm font-semibold uppercase">{t('title')}</p>
+          {isOrder ? (
+            /* Deliberately bilingual whatever the UI locale: this line is the
+               one thing that must not be misread at the counter, and the parent
+               reading it may not share the language the seller was working in.
+               A-FR-9.3. */
+            <div className="mt-2 border-2 border-black px-3 py-2">
+              <p className="text-base font-bold uppercase tracking-wide">
+                Commande / Order
+              </p>
+              <p className="text-[0.7rem] font-semibold uppercase">
+                Pas encore retiré · Not yet collected
+              </p>
+            </div>
+          ) : (
+            <p className="mt-2 text-sm font-semibold uppercase">{t('title')}</p>
+          )}
         </header>
 
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 border-b py-4 text-xs">
-          <Meta label={t('receiptNo')} value={receipt.receipt_no} mono />
+          <Meta
+            label={isOrder ? t('orderNo') : t('receiptNo')}
+            value={receipt.receipt_no}
+            mono
+          />
           <Meta label={t('date')} value={formatDateTime(receipt.sold_at, locale)} />
+          {isOrder && receipt.expected_ready_date ? (
+            <Meta
+              label={t('expectedReady')}
+              value={formatDate(receipt.expected_ready_date, locale)}
+            />
+          ) : null}
           <Meta label={t('customer')} value={receipt.customer_name} />
           {receipt.student_name ? (
             <Meta label={t('student')} value={receipt.student_name} />
@@ -167,6 +203,13 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
           {tPayment(receipt.payment_method)}
         </p>
 
+        {isOrder && receipt.measurements ? (
+          <p className="mt-2 text-xs">
+            <span className="text-neutral-600">{t('measurements')}: </span>
+            {receipt.measurements}
+          </p>
+        ) : null}
+
         {receipt.notes ? (
           <p className="mt-2 text-xs text-neutral-600">{receipt.notes}</p>
         ) : null}
@@ -190,7 +233,7 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
         </div>
 
         <footer className="mt-6 border-t pt-3 text-center text-[0.65rem] text-neutral-500">
-          {t('footer')}
+          {isOrder ? t('orderFooter') : t('footer')}
         </footer>
       </article>
     </>

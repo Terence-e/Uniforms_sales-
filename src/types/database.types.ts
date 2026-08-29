@@ -17,6 +17,12 @@ export type Json =
 export type UserRole = 'seller' | 'administration' | 'maintenance' | 'super_admin';
 export type PaymentMethod = 'cash' | 'mobile_money' | 'bank_transfer';
 export type StockMovementKind = 'intake' | 'sale' | 'return' | 'adjustment';
+export type OrderStatus =
+  | 'ordered'
+  | 'in_production'
+  | 'ready'
+  | 'collected'
+  | 'cancelled';
 
 export type Database = {
   public: {
@@ -371,6 +377,131 @@ export type Database = {
           }
         ];
       };
+      orders: {
+        Row: {
+          id: string;
+          order_no: string;
+          ordered_at: string;
+          expected_ready_date: string | null;
+          status: OrderStatus;
+          customer_name: string;
+          student_name: string | null;
+          class_level: string | null;
+          phone: string | null;
+          payment_method: PaymentMethod;
+          subtotal: number;
+          discount: number;
+          total: number;
+          measurements: string | null;
+          notes: string | null;
+          seller_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_no?: string;
+          ordered_at?: string;
+          expected_ready_date?: string | null;
+          status?: OrderStatus;
+          customer_name: string;
+          student_name?: string | null;
+          class_level?: string | null;
+          phone?: string | null;
+          payment_method?: PaymentMethod;
+          subtotal: number;
+          discount?: number;
+          total: number;
+          measurements?: string | null;
+          notes?: string | null;
+          seller_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_no?: string;
+          ordered_at?: string;
+          expected_ready_date?: string | null;
+          status?: OrderStatus;
+          customer_name?: string;
+          student_name?: string | null;
+          class_level?: string | null;
+          phone?: string | null;
+          payment_method?: PaymentMethod;
+          subtotal?: number;
+          discount?: number;
+          total?: number;
+          measurements?: string | null;
+          notes?: string | null;
+          seller_id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'orders_seller_id_fkey';
+            columns: ['seller_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      order_items: {
+        Row: {
+          id: string;
+          order_id: string;
+          product_id: string | null;
+          description: string;
+          size: string | null;
+          unit_price: number;
+          quantity: number;
+          line_total: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          product_id?: string | null;
+          description: string;
+          size?: string | null;
+          unit_price: number;
+          quantity: number;
+          line_total: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          product_id?: string | null;
+          description?: string;
+          size?: string | null;
+          unit_price?: number;
+          quantity?: number;
+          line_total?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'order_items_order_id_fkey';
+            columns: ['order_id'];
+            referencedRelation: 'orders';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'order_items_product_id_fkey';
+            columns: ['product_id'];
+            referencedRelation: 'products';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      reference_counters: {
+        Row: { prefix: string; year: number; last_value: number };
+        Insert: { prefix: string; year: number; last_value?: number };
+        Update: { prefix?: string; year?: number; last_value?: number };
+        Relationships: [];
+      };
     };
     Views: Record<never, never>;
     Functions: {
@@ -381,11 +512,13 @@ export type Database = {
       current_user_role: { Args: Record<string, never>; Returns: UserRole };
       next_receipt_no: { Args: Record<string, never>; Returns: string };
       count_active_users: { Args: Record<string, never>; Returns: number };
+      next_reference: { Args: { p_prefix: string }; Returns: string };
     };
     Enums: {
       user_role: UserRole;
       payment_method: PaymentMethod;
       stock_movement_kind: StockMovementKind;
+      order_status: OrderStatus;
     };
     CompositeTypes: Record<never, never>;
   };
@@ -405,3 +538,5 @@ export type Sale = Tables<'sales'>;
 export type SaleItem = Tables<'sale_items'>;
 export type StockLevel = Tables<'stock_levels'>;
 export type StockMovement = Tables<'stock_movements'>;
+export type Order = Tables<'orders'>;
+export type OrderItem = Tables<'order_items'>;

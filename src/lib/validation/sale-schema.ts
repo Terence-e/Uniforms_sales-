@@ -17,7 +17,8 @@ export function toMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-const money = z.coerce
+/** Exported so order-schema.ts validates money exactly as the sale form does. */
+export const money = z.coerce
   .number({ message: 'positive' })
   .nonnegative({ message: 'nonNegative' })
   .finite({ message: 'nonNegative' })
