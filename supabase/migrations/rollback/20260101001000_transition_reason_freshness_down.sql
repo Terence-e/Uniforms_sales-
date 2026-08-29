@@ -1,0 +1,10 @@
+-- Rollback for 20260101001000_transition_reason_freshness.sql.
+--
+-- MANUAL ONLY -- see supabase/README.md.
+--
+-- There is nothing structural to undo: this migration only replaced a function
+-- body. Rolling it back means restoring the weaker check from
+-- 20260101000900, which accepts a stale reason left behind by an earlier
+-- transition. Re-run the function definition from that file to do so.
+--
+-- Deliberately a no-op rather than a silent downgrade of an audit rule.
