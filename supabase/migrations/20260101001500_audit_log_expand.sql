@@ -1,3 +1,16 @@
+-- Renumbered from 20260101000800.
+--
+-- That version was already taken by 20260101000800_orders.sql, which had been
+-- applied first. The Supabase CLI keys migrations by the numeric prefix, so it
+-- saw 20260101000800 as done and skipped this file -- silently. None of the
+-- columns below existed in the database, logAudit() swallows its own errors by
+-- design, and so every application-level audit write failed without a sound
+-- while the audit viewer's query failed outright.
+--
+-- Nothing here changed but the file name. Every statement is idempotent
+-- (add column if not exists / create or replace / drop ... if exists), so it is
+-- safe on a database that somehow did get the original.
+
 -- Audit log expansion (spec A-11 / A-FR-11.2, A-FR-11.3, A-FR-11.4).
 --
 -- The first cut of audit_log carried only login events (actor_id, action, ip,
