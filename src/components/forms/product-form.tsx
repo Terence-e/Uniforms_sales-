@@ -31,7 +31,7 @@ type Product = {
 
 type FieldErrors = Record<string, string>;
 
-export function ProductForm({ product }: { product?: Product }) {
+export function ProductForm({ product, sizes = [] }: { product?: Product; sizes?: string[] }) {
   const t = useTranslations('Catalogue');
   const tv = useTranslations('Validation');
   const router = useRouter();
@@ -74,7 +74,7 @@ export function ProductForm({ product }: { product?: Product }) {
       reorder_level: threshold
     };
     const res: ProductResult = isEdit
-      ? await updateProduct(product!.id, input)
+      ? await updateProduct(product!.id, input, { force })
       : await createProduct(input, { force });
     setPending(false);
 
@@ -143,7 +143,21 @@ export function ProductForm({ product }: { product?: Product }) {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="size">{t('size')}</Label>
-              <Input id="size" value={size} onChange={(e) => setSize(e.target.value)} />
+              {/* Free text with autocomplete of previously-entered sizes: the
+                  existing '10' surfaces before the user retypes it as 'Size 10',
+                  yet both may coexist deliberately. */}
+              <Input
+                id="size"
+                list="product-size-options"
+                autoComplete="off"
+                value={size}
+                onChange={(e) => setSize(e.target.value)}
+              />
+              <datalist id="product-size-options">
+                {sizes.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
               {field('size')}
             </div>
             <div className="space-y-1.5">
@@ -194,7 +208,7 @@ export function ProductForm({ product }: { product?: Product }) {
             {duplicate ? (
               <Button type="button" onClick={() => submit(true)} disabled={pending} className="gap-2">
                 {pending && <Spinner className="size-4 border-primary-foreground/40 border-t-primary-foreground" />}
-                {t('createAnyway')}
+                {isEdit ? t('saveAnyway') : t('createAnyway')}
               </Button>
             ) : (
               <Button type="submit" disabled={pending} className="gap-2">

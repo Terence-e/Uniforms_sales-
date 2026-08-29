@@ -35,6 +35,13 @@ export default async function CataloguePage({ params }: Props) {
 
   const products = await listCatalogue();
 
+  // Previously-entered sizes, distinct and sorted, feed the size autocomplete
+  // (A-FR-4.1). Kept as free text so '10' and 'Size 10' can deliberately coexist
+  // while the existing value still surfaces as a suggestion.
+  const sizes = Array.from(
+    new Set(products.map((p) => p.size).filter((s): s is string => Boolean(s)))
+  ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -42,7 +49,7 @@ export default async function CataloguePage({ params }: Props) {
           <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <ProductForm />
+        <ProductForm sizes={sizes} />
       </div>
 
       <Card>
@@ -85,6 +92,7 @@ export default async function CataloguePage({ params }: Props) {
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">
                           <ProductForm
+                            sizes={sizes}
                             product={{
                               id: p.id,
                               name_en: p.name_en,
