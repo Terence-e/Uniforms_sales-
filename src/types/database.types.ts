@@ -85,18 +85,28 @@ export type Database = {
         Row: {
           id: string;
           actor_id: string | null;
+          actor_name: string | null;
           action: string;
           entity: string | null;
           ip: string | null;
+          target_table: string | null;
+          target_id: string | null;
+          previous_value: Json | null;
+          new_value: Json | null;
           meta: Json;
           created_at: string;
         };
         Insert: {
           id?: string;
           actor_id?: string | null;
+          actor_name?: string | null;
           action: string;
           entity?: string | null;
           ip?: string | null;
+          target_table?: string | null;
+          target_id?: string | null;
+          previous_value?: Json | null;
+          new_value?: Json | null;
           meta?: Json;
           created_at?: string;
         };
@@ -370,6 +380,7 @@ export type Database = {
       can_operate: { Args: Record<string, never>; Returns: boolean };
       current_user_role: { Args: Record<string, never>; Returns: UserRole };
       next_receipt_no: { Args: Record<string, never>; Returns: string };
+      count_active_users: { Args: Record<string, never>; Returns: number };
     };
     Enums: {
       user_role: UserRole;

@@ -255,13 +255,12 @@ export async function updateOwnProfile(input: {
   return { ok: true };
 }
 
-/** Count of active accounts. Only meaningful for oversight roles (RLS scopes it);
- * used on the Super Admin dashboard. */
+/** Count of active accounts, shown on every role's dashboard. Goes through the
+ * count_active_users() SECURITY DEFINER function so the number is the true team
+ * size for everyone, without exposing any profile rows (a direct query would be
+ * RLS-scoped to the caller's own row for non-oversight roles). */
 export async function countActiveUsers() {
   const supabase = await createClient();
-  const { count } = await supabase
-    .from('profiles')
-    .select('id', { count: 'exact', head: true })
-    .eq('is_active', true);
-  return count ?? 0;
+  const { data } = await supabase.rpc('count_active_users');
+  return data ?? 0;
 }

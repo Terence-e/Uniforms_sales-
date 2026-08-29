@@ -247,6 +247,8 @@
     "email": "Email",
     "emailPlaceholder": "you@school.edu",
     "password": "Password",
+    "show": "Show password",
+    "hide": "Hide password",
     "rememberMe": "Remember me",
     "forgotPassword": "Forgot password?",
     "submit": "Sign in",

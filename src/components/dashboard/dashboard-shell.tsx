@@ -192,7 +192,6 @@ function SidebarContent({
                   key={item.key}
                   href={item.href}
                   onClick={onNavigate}
-                  prefetch={false}
                   aria-current={active ? 'page' : undefined}
                   className={cls}
                 >

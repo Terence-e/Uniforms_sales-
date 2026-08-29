@@ -28,13 +28,11 @@ export async function generateMetadata({ params }: Props) {
 
 type TileKey = 'salesMonth' | 'revenueMonth' | 'products' | 'lowStock' | 'users';
 
-// Each role sees only what it actually handles.
-const TILES: Record<UserRole, TileKey[]> = {
-  seller: ['salesMonth', 'revenueMonth', 'lowStock', 'products'],
-  administration: ['salesMonth', 'revenueMonth', 'products', 'lowStock'],
-  maintenance: ['salesMonth', 'revenueMonth', 'products', 'lowStock'],
-  super_admin: ['salesMonth', 'revenueMonth', 'products', 'users']
-};
+// Everyone sees the same headline figures: the sales ledger, catalogue size,
+// low-stock count and team size are shared information. Only the ability to act
+// on them (recording, editing, managing) differs by role, and that is enforced
+// on the pages and in the database, not by hiding the numbers here.
+const TILES: TileKey[] = ['salesMonth', 'revenueMonth', 'products', 'lowStock', 'users'];
 
 export default async function DashboardHome({ params }: Props) {
   const { locale } = await params;
@@ -54,8 +52,8 @@ export default async function DashboardHome({ params }: Props) {
     getMonthlySales(8),
     listRecentSales(6),
     listStock(),
-    // Only the Super Admin tile shows this -- skip the query for everyone else.
-    role === 'super_admin' ? countActiveUsers() : Promise.resolve(0)
+    // Shown to every role now, so always fetched.
+    countActiveUsers()
   ]);
   const name = profile.full_name || profile.email;
   const lowItems = stock.filter((p) => p.reorderLevel > 0 && p.quantity <= p.reorderLevel);
@@ -85,8 +83,9 @@ export default async function DashboardHome({ params }: Props) {
     }
   };
 
-  const tiles = TILES[role];
-  const chartTitle = role === 'seller' ? t('overview.yourSales') : t('overview.salesTrend');
+  const tiles = TILES;
+  // Everyone now sees the whole team's sales, so the trend is never "yours".
+  const chartTitle = t('overview.salesTrend');
 
   return (
     <div className="space-y-6">

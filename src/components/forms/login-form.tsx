@@ -1,10 +1,10 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { AtSignIcon, LockKeyholeIcon } from 'lucide-react';
+import { AtSignIcon, EyeIcon, EyeOffIcon, LockKeyholeIcon } from 'lucide-react';
 import { signIn } from '@/actions/auth';
 import { emptyLoginState } from '@/lib/validation/auth-schema';
 import { Link } from '@/i18n/navigation';
@@ -32,6 +32,10 @@ export function LoginForm({ redirectTo }: { redirectTo: string | null }) {
   const t = useTranslations('Login');
   const tv = useTranslations('Validation');
   const [state, formAction] = useActionState(signIn, emptyLoginState);
+  // The eye toggle is pure client state, independent of the field's value and of
+  // any submit/pending state -- so it is always clickable, even on an empty field
+  // or the instant the page loads.
+  const [showPassword, setShowPassword] = useState(false);
 
   // Surface the general auth error as an in-app toast (field errors stay inline).
   useEffect(() => {
@@ -79,14 +83,22 @@ export function LoginForm({ redirectTo }: { redirectTo: string | null }) {
           <Input
             id="password"
             name="password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
             placeholder={t('password')}
             required
-            className="pl-9"
+            className="pl-9 pr-9"
             aria-invalid={Boolean(state.fieldErrors.password)}
             aria-describedby={state.fieldErrors.password ? 'password-error' : undefined}
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword((s) => !s)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+            aria-label={showPassword ? t('hide') : t('show')}
+          >
+            {showPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+          </button>
         </div>
         {state.fieldErrors.password ? (
           <p id="password-error" className="text-sm text-destructive">

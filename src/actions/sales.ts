@@ -131,8 +131,7 @@ export type ExportResult =
  * Builds the Excel workbook on the server and hands it back base64-encoded.
  *
  * Server Actions can't stream a file download, so the client turns this into a
- * Blob. RLS still applies to the query, meaning a seller exports only their own
- * sales while an admin gets everything -- no extra check needed here.
+ * Blob. Sales are shared, so every role exports the same full set for the range.
  */
 export async function exportSalesToExcel(
   from: string,
@@ -216,8 +215,8 @@ function monthKey(d: Date) {
 
 /**
  * Sales totals per calendar month over the last `months` months (oldest first),
- * with empty months filled in as zero. RLS scopes it: a seller sees only their
- * own sales, oversight roles see all.
+ * with empty months filled in as zero. Sales are shared, so every role sees the
+ * whole team's totals.
  */
 export async function getMonthlySales(months = 8) {
   const supabase = await createClient();

@@ -247,6 +247,8 @@
     "email": "Adresse e-mail",
     "emailPlaceholder": "vous@ecole.edu",
     "password": "Mot de passe",
+    "show": "Afficher le mot de passe",
+    "hide": "Masquer le mot de passe",
     "rememberMe": "Se souvenir de moi",
     "forgotPassword": "Mot de passe oubli\u00e9 ?",
     "submit": "Se connecter",
