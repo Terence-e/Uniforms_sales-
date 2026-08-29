@@ -21,7 +21,8 @@ export type StockMovementKind =
   | 'sale'
   | 'return'
   | 'adjustment'
-  | 'collection';
+  | 'collection'
+  | 'production';
 export type OrderStatus =
   | 'ordered'
   | 'in_production'
@@ -351,6 +352,9 @@ export type Database = {
           sale_id: string | null;
           collection_id: string | null;
           note: string | null;
+          occurred_on: string | null;
+          tailor_name: string | null;
+          batch_id: string | null;
           created_by: string;
           created_at: string;
         };
@@ -362,6 +366,9 @@ export type Database = {
           sale_id?: string | null;
           collection_id?: string | null;
           note?: string | null;
+          occurred_on?: string | null;
+          tailor_name?: string | null;
+          batch_id?: string | null;
           created_by: string;
           created_at?: string;
         };
@@ -373,6 +380,9 @@ export type Database = {
           sale_id?: string | null;
           collection_id?: string | null;
           note?: string | null;
+          occurred_on?: string | null;
+          tailor_name?: string | null;
+          batch_id?: string | null;
           created_by?: string;
           created_at?: string;
         };
@@ -626,6 +636,15 @@ export type Database = {
           p_line_ids: string[];
           p_collector_name: string;
           p_handed_over_by: string;
+        };
+        Returns: string;
+      };
+      record_production_batch: {
+        Args: {
+          p_lines: Json;
+          p_occurred_on: string;
+          p_tailor_name: string | null;
+          p_note: string | null;
         };
         Returns: string;
       };

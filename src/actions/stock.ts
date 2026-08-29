@@ -3,12 +3,22 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { logAudit } from '@/lib/audit';
+import {
+  productionBatchSchema,
+  type ProductionBatchInput
+} from '@/lib/validation/production-schema';
 import type { StockMovementKind } from '@/types/database.types';
 
 /**
- * Phase 2. The tables, triggers and policies already exist
- * (supabase/migrations/20260101000100_stock.sql), so these read paths work
- * today; the write paths are wired but not yet reachable from the UI.
+ * Stock: reads, the movement ledger, and production entry.
+ *
+ * `stock_levels` is never written from here. Every balance is derived by the
+ * apply_stock_movement trigger from the rows in `stock_movements`, so the
+ * ledger can always rebuild the balance if the two ever disagree -- and no
+ * screen can edit a quantity directly (A-FR-5.4).
+ *
+ * `deductStockForSale()` remains written but uncalled: sales still do not move
+ * stock. Collection does (see collect_order_lines), and production does.
  */
 
 export async function listStock() {
@@ -124,5 +134,102 @@ export async function listProducts() {
     .eq('is_active', true)
     .order('category')
     .order('name_en');
+  return data ?? [];
+}
+
+// ------------------------------------------------------------- production
+
+export type ProductionResult =
+  | { ok: true; batchId: string; lineCount: number; totalUnits: number }
+  | { ok: false; error: string; fieldErrors?: Record<string, string> };
+
+/**
+ * Records a batch of finished garments (A-FR-5.2, A-FR-5.3, A-FR-5.4).
+ *
+ * The whole batch goes through `record_production_batch()` rather than a loop of
+ * inserts here. Several lines written one call at a time are several
+ * transactions, and a failure on the third leaves stock up by the first two
+ * with no audit row explaining it. The function also writes the single audit
+ * entry for the batch, which an operator cannot write directly.
+ *
+ * `stock_levels` is never touched -- not here, not there. The
+ * apply_stock_movement trigger derives it from the ledger, which is what makes
+ * "stock quantity is derived, never a manually edited number" true rather than
+ * merely intended (A-FR-5.4).
+ */
+export async function recordProductionBatch(
+  input: ProductionBatchInput
+): Promise<ProductionResult> {
+  const parsed = productionBatchSchema.safeParse(input);
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      fieldErrors[issue.path.join('.')] ??= issue.message;
+    }
+    return { ok: false, error: 'validation', fieldErrors };
+  }
+
+  const batch = parsed.data;
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc('record_production_batch', {
+    p_lines: batch.lines.map((line) => ({
+      product_id: line.productId,
+      quantity: line.quantity
+    })),
+    p_occurred_on: batch.occurredOn,
+    p_tailor_name: batch.tailorName,
+    p_note: batch.note
+  });
+
+  if (error || !data) return { ok: false, error: error?.message ?? 'productionFailed' };
+
+  revalidatePath('/stock', 'page');
+  return {
+    ok: true,
+    batchId: data,
+    lineCount: batch.lines.length,
+    totalUnits: batch.lines.reduce((sum, line) => sum + line.quantity, 0)
+  };
+}
+
+/**
+ * Names already used on production entries, for the tailor autocomplete.
+ *
+ * Deliberately derived from the ledger rather than kept in a table of tailors:
+ * a separate register would be a second thing to maintain and would drift the
+ * moment somebody typed a name that was not in it.
+ */
+export async function listTailorNames(limit = 50) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('stock_movements')
+    .select('tailor_name')
+    .eq('kind', 'production')
+    .not('tailor_name', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(500);
+
+  const seen = new Set<string>();
+  for (const row of data ?? []) {
+    if (row.tailor_name) seen.add(row.tailor_name);
+    if (seen.size >= limit) break;
+  }
+  return [...seen];
+}
+
+/** Recent production batches, newest first, for the list under the form. */
+export async function listRecentProduction(limit = 20) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('stock_movements')
+    .select(
+      `id, quantity, occurred_on, tailor_name, note, batch_id, created_at,
+       product:products ( name_en, name_fr, size )`
+    )
+    .eq('kind', 'production')
+    .order('occurred_on', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit);
   return data ?? [];
 }
