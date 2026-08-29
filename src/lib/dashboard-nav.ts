@@ -41,7 +41,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
 
   { key: 'receipts', icon: Receipt, section: 'records', roles: ALL },
   { key: 'reports', href: '/reports', icon: BarChart3, section: 'records', roles: ALL },
-  { key: 'audit', icon: ScrollText, section: 'records', roles: ALL },
+  { key: 'audit', href: '/audit', icon: ScrollText, section: 'records', roles: ALL },
 
   { key: 'catalogue', icon: Tags, section: 'admin', roles: ALL },
   { key: 'accounts', href: '/accounts', icon: Users, section: 'admin', roles: ['super_admin'] }

@@ -102,6 +102,21 @@
       "body": "{email} needs a new password. Open Accounts to set a temporary one."
     }
   },
+  "Audit": {
+    "title": "Audit log",
+    "subtitle": "Every recorded action, including failed sign-ins. Append-only.",
+    "recent": "Recent entries",
+    "empty": "No entries yet.",
+    "time": "Time",
+    "action": "Action",
+    "actor": "Account",
+    "ip": "IP",
+    "actions": {
+      "login_failed": "Failed login",
+      "login_blocked": "Login blocked",
+      "login_success": "Signed in"
+    }
+  },
   "Profile": {
     "title": "My profile",
     "subtitle": "Your account details.",
@@ -200,7 +215,9 @@
     "submit": "Sign in",
     "submitting": "Signing in\u2026",
     "invalidCredentials": "Incorrect email or password.",
-    "unexpectedError": "Something went wrong. Please try again."
+    "unexpectedError": "Something went wrong. Please try again.",
+    "tooManyAttempts": "Too many failed attempts. Try again in a few minutes.",
+    "sessionExpired": "Your session expired. Please sign in again."
   },
   "Sales": {
     "title": "New sale",

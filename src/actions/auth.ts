@@ -1,10 +1,12 @@
 'use server';
 
 import { cache } from 'react';
+import { cookies, headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { getLocale } from 'next-intl/server';
 import { createClient as createSupabaseJsClient } from '@supabase/supabase-js';
 import { redirect } from '@/i18n/navigation';
+import { logAudit, countRecentFailedLogins } from '@/lib/audit';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireSupabaseEnv } from '@/lib/supabase/env';
@@ -14,6 +16,13 @@ import {
   loginSchema,
   type LoginState
 } from '@/lib/validation/auth-schema';
+
+async function getClientIp(): Promise<string | null> {
+  const h = await headers();
+  const fwd = h.get('x-forwarded-for');
+  if (fwd) return fwd.split(',')[0].trim();
+  return h.get('x-real-ip');
+}
 
 export async function signIn(
   _prevState: LoginState,
@@ -36,16 +45,38 @@ export async function signIn(
     return { error: null, fieldErrors };
   }
 
+  const email = parsed.data.email;
+  const ip = await getClientIp();
+
+  // Rate limit: after 5 failed attempts in 5 minutes, lock this email out until
+  // the failures age out of the window. The 6th attempt in a row is refused.
+  if ((await countRecentFailedLogins(email)) >= 5) {
+    await logAudit({ action: 'login_blocked', ip, meta: { email } });
+    return { error: 'tooManyAttempts', fieldErrors: {} };
+  }
+
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
-    email: parsed.data.email,
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
     password: parsed.data.password
   });
 
   if (error) {
+    await logAudit({ action: 'login_failed', ip, meta: { email } });
     // Deliberately vague: don't reveal whether the address has an account.
     return { error: 'invalidCredentials', fieldErrors: {} };
   }
+
+  await logAudit({ actorId: data.user?.id ?? null, action: 'login_success', ip, meta: { email } });
+
+  // Stamp the session start so the proxy can enforce a per-role timeout.
+  const cookieStore = await cookies();
+  cookieStore.set('session_started', String(Date.now()), {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production'
+  });
 
   const locale = await getLocale();
   revalidatePath('/', 'layout');

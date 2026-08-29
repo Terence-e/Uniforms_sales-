@@ -35,13 +35,14 @@ export function LoginForm({ redirectTo }: { redirectTo: string | null }) {
 
   // Surface the general auth error as an in-app toast (field errors stay inline).
   useEffect(() => {
-    if (state.error) {
-      toast.error(
-        state.error === 'invalidCredentials'
-          ? t('invalidCredentials')
-          : t('unexpectedError')
-      );
-    }
+    if (!state.error) return;
+    const message =
+      state.error === 'invalidCredentials'
+        ? t('invalidCredentials')
+        : state.error === 'tooManyAttempts'
+          ? t('tooManyAttempts')
+          : t('unexpectedError');
+    toast.error(message);
   }, [state, t]);
 
   return (
