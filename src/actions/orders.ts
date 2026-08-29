@@ -6,10 +6,12 @@ import { computeLineTotal, computeTotals } from '@/lib/validation/sale-schema';
 import {
   advanceLineSchema,
   cancelLineSchema,
+  collectionSchema,
   orderSchema,
   revertLineSchema,
   type AdvanceLineInput,
   type CancelLineInput,
+  type CollectionInput,
   type OrderInput,
   type RevertLineInput
 } from '@/lib/validation/order-schema';
@@ -272,4 +274,89 @@ export async function getOrderWithItems(orderId: string) {
     .eq('id', orderId)
     .single();
   return data;
+}
+
+// ----------------------------------------------------------- collection
+
+export type CollectResult =
+  | { ok: true; collectionId: string }
+  | { ok: false; error: string; fieldErrors?: Record<string, string> };
+
+/**
+ * Records a collection: the slip, the lines it covers, their move to
+ * 'collected', and the stock deduction (A-FR-9.7, A-FR-9.8).
+ *
+ * All four happen inside `collect_order_lines()` rather than here. Four
+ * PostgREST calls are four transactions, and a failure between them would leave
+ * garments marked collected that stock still believes are on the shelf. The
+ * function also re-checks permissions and that every line is Ready, so a
+ * tampered payload cannot collect somebody else's order or something still in
+ * production.
+ */
+export async function collectOrderLines(input: CollectionInput): Promise<CollectResult> {
+  const parsed = collectionSchema.safeParse(input);
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      fieldErrors[issue.path.join('.')] ??= issue.message;
+    }
+    return { ok: false, error: 'validation', fieldErrors };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('collect_order_lines', {
+    p_order_id: parsed.data.orderId,
+    p_line_ids: parsed.data.lineIds,
+    p_collector_name: parsed.data.collectorName,
+    p_handed_over_by: parsed.data.handedOverBy
+  });
+
+  if (error || !data) return { ok: false, error: error?.message ?? 'collectFailed' };
+
+  revalidatePath('/orders', 'page');
+  return { ok: true, collectionId: data };
+}
+
+/** The slip: what was handed over, when, to whom, and which order it closes. */
+export async function getCollection(collectionId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('collections')
+    .select(
+      `id, col_no, collected_at, collector_name,
+       handedOver:profiles!collections_handed_over_by_fkey ( full_name ),
+       order:orders!collections_order_id_fkey (
+         id, order_no, ordered_at, customer_name, student_name, class_level,
+         phone, payment_method, total
+       ),
+       items:collection_items (
+         id,
+         line:order_items ( id, description, size, unit_price, quantity, line_total )
+       )`
+    )
+    .eq('id', collectionId)
+    .single();
+  return data;
+}
+
+/** Every slip issued against an order -- a parent may collect over several visits. */
+export async function listCollectionsForOrder(orderId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('collections')
+    .select('id, col_no, collected_at, collector_name')
+    .eq('order_id', orderId)
+    .order('collected_at', { ascending: false });
+  return data ?? [];
+}
+
+/** Staff who may be recorded as having handed goods over. */
+export async function listStaff() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+    .eq('is_active', true)
+    .order('full_name');
+  return data ?? [];
 }
