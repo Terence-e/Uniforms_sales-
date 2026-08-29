@@ -21,6 +21,7 @@ export type StockMovementKind =
   | 'sale'
   | 'return'
   | 'adjustment'
+  | 'collection'
   | 'production';
 export type OrderStatus =
   | 'ordered'
@@ -349,6 +350,7 @@ export type Database = {
           kind: StockMovementKind;
           quantity: number;
           sale_id: string | null;
+          collection_id: string | null;
           note: string | null;
           occurred_on: string | null;
           tailor_name: string | null;
@@ -362,6 +364,7 @@ export type Database = {
           kind: StockMovementKind;
           quantity: number;
           sale_id?: string | null;
+          collection_id?: string | null;
           note?: string | null;
           occurred_on?: string | null;
           tailor_name?: string | null;
@@ -375,6 +378,7 @@ export type Database = {
           kind?: StockMovementKind;
           quantity?: number;
           sale_id?: string | null;
+          collection_id?: string | null;
           note?: string | null;
           occurred_on?: string | null;
           tailor_name?: string | null;
@@ -397,7 +401,6 @@ export type Database = {
           order_no: string;
           ordered_at: string;
           expected_ready_date: string | null;
-          status: OrderStatus;
           customer_name: string;
           student_name: string | null;
           class_level: string | null;
@@ -417,7 +420,6 @@ export type Database = {
           order_no?: string;
           ordered_at?: string;
           expected_ready_date?: string | null;
-          status?: OrderStatus;
           customer_name: string;
           student_name?: string | null;
           class_level?: string | null;
@@ -437,7 +439,6 @@ export type Database = {
           order_no?: string;
           ordered_at?: string;
           expected_ready_date?: string | null;
-          status?: OrderStatus;
           customer_name?: string;
           student_name?: string | null;
           class_level?: string | null;
@@ -472,6 +473,11 @@ export type Database = {
           quantity: number;
           line_total: number;
           created_at: string;
+          status: OrderStatus | null;
+          status_reason: string | null;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+          refund_method: PaymentMethod | null;
         };
         Insert: {
           id?: string;
@@ -483,6 +489,11 @@ export type Database = {
           quantity: number;
           line_total: number;
           created_at?: string;
+          status?: OrderStatus | null;
+          status_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          refund_method?: PaymentMethod | null;
         };
         Update: {
           id?: string;
@@ -494,6 +505,11 @@ export type Database = {
           quantity?: number;
           line_total?: number;
           created_at?: string;
+          status?: OrderStatus | null;
+          status_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          refund_method?: PaymentMethod | null;
         };
         Relationships: [
           {
@@ -503,9 +519,95 @@ export type Database = {
             referencedColumns: ['id'];
           },
           {
+            foreignKeyName: 'order_items_cancelled_by_fkey';
+            columns: ['cancelled_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
             foreignKeyName: 'order_items_product_id_fkey';
             columns: ['product_id'];
             referencedRelation: 'products';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      collections: {
+        Row: {
+          id: string;
+          col_no: string;
+          order_id: string;
+          collected_at: string;
+          collector_name: string;
+          handed_over_by: string;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          col_no?: string;
+          order_id: string;
+          collected_at?: string;
+          collector_name: string;
+          handed_over_by: string;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          col_no?: string;
+          order_id?: string;
+          collected_at?: string;
+          collector_name?: string;
+          handed_over_by?: string;
+          created_by?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'collections_order_id_fkey';
+            columns: ['order_id'];
+            referencedRelation: 'orders';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'collections_handed_over_by_fkey';
+            columns: ['handed_over_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      collection_items: {
+        Row: {
+          id: string;
+          collection_id: string;
+          order_item_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          collection_id: string;
+          order_item_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          collection_id?: string;
+          order_item_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'collection_items_collection_id_fkey';
+            columns: ['collection_id'];
+            referencedRelation: 'collections';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'collection_items_order_item_id_fkey';
+            columns: ['order_item_id'];
+            referencedRelation: 'order_items';
             referencedColumns: ['id'];
           }
         ];
@@ -527,6 +629,16 @@ export type Database = {
       next_receipt_no: { Args: Record<string, never>; Returns: string };
       count_active_users: { Args: Record<string, never>; Returns: number };
       next_reference: { Args: { p_prefix: string }; Returns: string };
+      order_status_rank: { Args: { s: OrderStatus }; Returns: number };
+      collect_order_lines: {
+        Args: {
+          p_order_id: string;
+          p_line_ids: string[];
+          p_collector_name: string;
+          p_handed_over_by: string;
+        };
+        Returns: string;
+      };
       record_production_batch: {
         Args: {
           p_lines: Json;
@@ -563,3 +675,5 @@ export type StockLevel = Tables<'stock_levels'>;
 export type StockMovement = Tables<'stock_movements'>;
 export type Order = Tables<'orders'>;
 export type OrderItem = Tables<'order_items'>;
+export type Collection = Tables<'collections'>;
+export type CollectionItem = Tables<'collection_items'>;

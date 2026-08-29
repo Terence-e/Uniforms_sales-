@@ -183,6 +183,15 @@ export async function changePassword(input: {
   });
   if (error) return { ok: false, error: error.message };
 
+  // Audited (A-FR-11.1). The password itself is never recorded.
+  await logAudit({
+    actorId: user.id,
+    action: 'password_changed',
+    targetTable: 'auth.users',
+    targetId: user.id,
+    ip: await getClientIp()
+  });
+
   revalidatePath('/', 'layout');
   return { ok: true };
 }
@@ -244,12 +253,34 @@ export async function updateOwnProfile(input: {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthorized' };
 
+  // Snapshot the "before" so the audit entry records what actually changed.
+  const { data: before } = await supabase
+    .from('profiles')
+    .select('full_name, avatar_url')
+    .eq('id', user.id)
+    .single();
+
+  const nextName = full_name.slice(0, 120);
   const { error } = await supabase
     .from('profiles')
-    .update({ full_name: full_name.slice(0, 120), avatar_url: input.avatar_url })
+    .update({ full_name: nextName, avatar_url: input.avatar_url })
     .eq('id', user.id);
 
   if (error) return { ok: false, error: error.message };
+
+  // Audited (A-FR-11.1). Avatars are large data URLs, so we log whether one is
+  // present rather than the bytes.
+  await logAudit({
+    actorId: user.id,
+    action: 'profile_updated',
+    targetTable: 'profiles',
+    targetId: user.id,
+    previousValue: {
+      full_name: before?.full_name ?? null,
+      has_avatar: Boolean(before?.avatar_url)
+    },
+    newValue: { full_name: nextName, has_avatar: Boolean(input.avatar_url) }
+  });
 
   revalidatePath('/', 'layout');
   return { ok: true };

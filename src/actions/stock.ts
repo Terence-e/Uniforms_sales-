@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { logAudit } from '@/lib/audit';
 import {
   productionBatchSchema,
   type ProductionBatchInput
@@ -80,6 +81,21 @@ export async function recordStockMovement(params: {
   });
 
   if (error) return { ok: false, error: error.message };
+
+  // Every stock movement is audited (A-FR-11.1: production entry / stock
+  // adjustment / return / negative-stock override all flow through here).
+  await logAudit({
+    actorId: user.id,
+    action: 'stock_movement',
+    targetTable: 'stock_movements',
+    targetId: params.productId,
+    newValue: {
+      kind: params.kind,
+      quantity: params.quantity,
+      sale_id: params.saleId ?? null,
+      note: params.note ?? null
+    }
+  });
 
   revalidatePath('/stock', 'page');
   return { ok: true };

@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getOrderWithItems } from '@/actions/orders';
 import { ReceiptPrint, type ReceiptData } from '@/components/receipt/receipt-print';
+import { deriveOrderStatus } from '@/lib/order-status';
 
 type Props = { params: Promise<{ locale: string; id: string }> };
 
@@ -23,6 +24,9 @@ export default async function OrderReceiptPage({ params }: Props) {
 
   const receipt: ReceiptData = {
     kind: 'order',
+    // Derived from the lines, the same rule the detail page and the order list
+    // use -- so all three agree about what this order currently is.
+    order_status: deriveOrderStatus((order.items ?? []).map((item) => item.status)),
     // The shared sheet labels this field by `kind`, so the order reference goes
     // in as the document number.
     receipt_no: order.order_no,
