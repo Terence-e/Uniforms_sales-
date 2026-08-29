@@ -354,8 +354,25 @@
     "summary": "{count} ventes pour un total de {total}"
   },
   "Stock": {
-    "title": "Stock",
-    "comingSoon": "La gestion du stock arrive en phase 2."
+    "title": "Production et stock",
+    "onHand": "En stock",
+    "product": "Produit",
+    "size": "Taille",
+    "quantity": "Quantité"
+  },
+  "Production": {
+    "title": "Enregistrer la production",
+    "subtitle": "Saisissez les articles à leur sortie de production. Le stock découle de ces saisies — il n’est jamais saisi directement.",
+    "addLine": "Ajouter un produit",
+    "quantityMade": "Quantité produite",
+    "dateMade": "Date de fabrication",
+    "tailor": "Couturier (facultatif)",
+    "note": "Note (facultatif)",
+    "record": "Enregistrer la production",
+    "recording": "Enregistrement…",
+    "batchTotal": "{units} articles sur {lines} ligne(s)",
+    "success": "{units} articles enregistrés sur {lines} ligne(s).",
+    "recent": "Production récente"
   },
   "Errors": {
     "title": "Une erreur est survenue",

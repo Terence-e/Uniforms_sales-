@@ -354,8 +354,25 @@
     "summary": "{count} sales totalling {total}"
   },
   "Stock": {
-    "title": "Stock",
-    "comingSoon": "Stock management arrives in phase 2."
+    "title": "Production & stock",
+    "onHand": "On hand",
+    "product": "Product",
+    "size": "Size",
+    "quantity": "Quantity"
+  },
+  "Production": {
+    "title": "Record production",
+    "subtitle": "Enter garments as they come out of production. Stock rises from these entries — it is never typed in directly.",
+    "addLine": "Add product",
+    "quantityMade": "Quantity made",
+    "dateMade": "Date made",
+    "tailor": "Tailor (optional)",
+    "note": "Note (optional)",
+    "record": "Record production",
+    "recording": "Recording…",
+    "batchTotal": "{units} garments across {lines} line(s)",
+    "success": "{units} garments recorded across {lines} line(s).",
+    "recent": "Recent production"
   },
   "Errors": {
     "title": "Something went wrong",

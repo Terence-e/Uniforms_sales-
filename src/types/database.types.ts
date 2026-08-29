@@ -16,7 +16,12 @@ export type Json =
 
 export type UserRole = 'seller' | 'administration' | 'maintenance' | 'super_admin';
 export type PaymentMethod = 'cash' | 'mobile_money' | 'bank_transfer';
-export type StockMovementKind = 'intake' | 'sale' | 'return' | 'adjustment';
+export type StockMovementKind =
+  | 'intake'
+  | 'sale'
+  | 'return'
+  | 'adjustment'
+  | 'production';
 export type OrderStatus =
   | 'ordered'
   | 'in_production'
@@ -345,6 +350,9 @@ export type Database = {
           quantity: number;
           sale_id: string | null;
           note: string | null;
+          occurred_on: string | null;
+          tailor_name: string | null;
+          batch_id: string | null;
           created_by: string;
           created_at: string;
         };
@@ -355,6 +363,9 @@ export type Database = {
           quantity: number;
           sale_id?: string | null;
           note?: string | null;
+          occurred_on?: string | null;
+          tailor_name?: string | null;
+          batch_id?: string | null;
           created_by: string;
           created_at?: string;
         };
@@ -365,6 +376,9 @@ export type Database = {
           quantity?: number;
           sale_id?: string | null;
           note?: string | null;
+          occurred_on?: string | null;
+          tailor_name?: string | null;
+          batch_id?: string | null;
           created_by?: string;
           created_at?: string;
         };
@@ -513,6 +527,15 @@ export type Database = {
       next_receipt_no: { Args: Record<string, never>; Returns: string };
       count_active_users: { Args: Record<string, never>; Returns: number };
       next_reference: { Args: { p_prefix: string }; Returns: string };
+      record_production_batch: {
+        Args: {
+          p_lines: Json;
+          p_occurred_on: string;
+          p_tailor_name: string | null;
+          p_note: string | null;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       user_role: UserRole;
