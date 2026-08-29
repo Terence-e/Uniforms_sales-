@@ -173,6 +173,7 @@
     "archiveConfirmBody": "\"{name}\" will disappear from the sale screen but stays in past records. You can restore it later.",
     "duplicateWarning": "A product with this garment and size already exists.",
     "createAnyway": "Create anyway",
+    "saveAnyway": "Save anyway",
     "created": "Product created.",
     "updated": "Product updated.",
     "archivedToast": "Product archived.",

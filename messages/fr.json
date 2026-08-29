@@ -173,6 +173,7 @@
     "archiveConfirmBody": "\u00ab {name} \u00bb dispara\u00eetra de l'\u00e9cran de vente mais restera dans l'historique. Vous pourrez le restaurer plus tard.",
     "duplicateWarning": "Un produit avec ce v\u00eatement et cette taille existe d\u00e9j\u00e0.",
     "createAnyway": "Cr\u00e9er quand m\u00eame",
+    "saveAnyway": "Enregistrer quand m\u00eame",
     "created": "Produit cr\u00e9\u00e9.",
     "updated": "Produit mis \u00e0 jour.",
     "archivedToast": "Produit archiv\u00e9.",

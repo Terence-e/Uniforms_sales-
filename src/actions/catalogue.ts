@@ -124,7 +124,11 @@ export async function createProduct(
   return { ok: true };
 }
 
-export async function updateProduct(id: string, input: ProductInput): Promise<ProductResult> {
+export async function updateProduct(
+  id: string,
+  input: ProductInput,
+  opts?: { force?: boolean }
+): Promise<ProductResult> {
   const p = parse(input);
   if (!p.ok) return { ok: false, fieldErrors: p.fieldErrors };
 
@@ -140,6 +144,20 @@ export async function updateProduct(id: string, input: ProductInput): Promise<Pr
     .eq('id', id)
     .single();
   if (!current) return { ok: false, error: 'notFound' };
+
+  // Duplicate warning (A-FR-4.4): same garment + size among *other* active
+  // products. Excludes the row being edited so re-saving it is never flagged.
+  if (!opts?.force) {
+    const { data: dup } = await admin
+      .from('products')
+      .select('id')
+      .eq('is_active', true)
+      .neq('id', id)
+      .ilike('name_en', name_en)
+      .eq('size', size)
+      .limit(1);
+    if (dup && dup.length > 0) return { ok: false, warning: 'duplicate' };
+  }
 
   const { error } = await admin
     .from('products')
