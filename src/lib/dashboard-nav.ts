@@ -11,6 +11,7 @@ import {
   Receipt,
   BarChart3,
   ScrollText,
+  Bug,
   Tags,
   Users,
   type LucideIcon
@@ -46,6 +47,15 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { key: 'receipts', icon: Receipt, section: 'records', roles: ALL },
   { key: 'reports', href: '/reports', icon: BarChart3, section: 'records', roles: ALL },
   { key: 'audit', href: '/audit', icon: ScrollText, section: 'records', roles: ALL },
+  // Maintenance and the Super Admin only -- RLS enforces it too; this just
+  // keeps the nav honest about who the screen is for.
+  {
+    key: 'bugReports',
+    href: '/bug-reports',
+    icon: Bug,
+    section: 'records',
+    roles: ['maintenance', 'super_admin']
+  },
 
   { key: 'catalogue', href: '/catalogue', icon: Tags, section: 'admin', roles: ['super_admin'] },
   { key: 'accounts', href: '/accounts', icon: Users, section: 'admin', roles: ['super_admin'] }

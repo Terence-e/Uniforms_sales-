@@ -9,6 +9,7 @@ import { signOut } from '@/actions/auth';
 import { SchoolLogo } from '@/components/brand/school-logo';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { NotificationBell } from '@/components/dashboard/notification-bell';
+import { ReportProblemDialog } from '@/components/bug-report/report-problem-dialog';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -121,6 +122,17 @@ export function DashboardShell({
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 print:max-w-none print:p-0">
           {children}
         </main>
+
+        {/* Every authenticated screen, discreetly (A-13). Sentry catches
+            crashes; the failures that matter most here -- a wrong total, a
+            receipt naming the wrong parent -- never throw, so the only way to
+            hear about them is to make telling someone take ten seconds.
+            print:hidden because it has no business on a receipt. */}
+        <footer className="mx-auto w-full max-w-7xl px-4 pb-6 sm:px-6 print:hidden">
+          <div className="flex justify-center border-t pt-4">
+            <ReportProblemDialog />
+          </div>
+        </footer>
       </div>
     </div>
   );
