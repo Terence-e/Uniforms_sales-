@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { formatDate } from '@/lib/format';
+import { JobAdvanceButton } from '@/components/open-jobs/job-advance-button';
 import {
   daysOpen,
-  isOverdue,
+  jobFlag,
   JOB_STAGES,
   matchesSearch,
   type JobStage,
@@ -97,11 +98,20 @@ export function OpenJobsBoard({ jobs }: { jobs: OpenJob[] }) {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map((job) => {
             const age = daysOpen(job.openedAt);
-            const overdue = isOverdue(job);
+            const flag = jobFlag(job);
             const Icon = job.kind === 'order' ? ShoppingBag : Scissors;
 
             return (
-              <Card key={job.key} className={overdue ? 'border-destructive/50' : undefined}>
+              <Card
+                key={job.key}
+                className={
+                  flag === 'overdue'
+                    ? 'border-destructive shadow-[0_0_0_1px_var(--destructive)]'
+                    : flag === 'aged'
+                      ? 'border-amber-500/60'
+                      : undefined
+                }
+              >
                 <CardContent className="space-y-2 p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -132,8 +142,12 @@ export function OpenJobsBoard({ jobs }: { jobs: OpenJob[] }) {
                     {/* The age is the number the seller scans for, so it is a
                         badge rather than buried in a line of text. */}
                     <Badge
-                      variant={age >= 14 ? 'destructive' : 'outline'}
-                      className="text-[0.7rem]"
+                      variant={flag === 'overdue' ? 'destructive' : 'outline'}
+                      className={
+                        flag === 'aged'
+                          ? 'border-amber-500 text-[0.7rem] text-amber-600 dark:text-amber-500'
+                          : 'text-[0.7rem]'
+                      }
                     >
                       {t('daysOpen', { days: age })}
                     </Badge>
@@ -142,20 +156,31 @@ export function OpenJobsBoard({ jobs }: { jobs: OpenJob[] }) {
                   <div className="space-y-0.5 text-xs text-muted-foreground">
                     <p>{t('openedOn', { date: formatDate(job.openedAt, locale) })}</p>
                     {job.expectedReadyDate ? (
-                      <p className={overdue ? 'font-medium text-destructive' : undefined}>
-                        {overdue ? (
+                      <p
+                        className={
+                          flag === 'overdue' ? 'font-semibold text-destructive' : undefined
+                        }
+                      >
+                        {flag === 'overdue' ? (
                           <TriangleAlert className="mr-1 inline size-3" />
                         ) : null}
-                        {t('expectedOn', {
-                          date: formatDate(job.expectedReadyDate, locale)
-                        })}
+                        {flag === 'overdue'
+                          ? t('overdueSince', {
+                              date: formatDate(job.expectedReadyDate, locale)
+                            })
+                          : t('expectedOn', {
+                              date: formatDate(job.expectedReadyDate, locale)
+                            })}
                       </p>
                     ) : null}
                   </div>
 
-                  <Button asChild variant="link" size="sm" className="h-auto p-0">
-                    <Link href={job.href}>{t('openJob')}</Link>
-                  </Button>
+                  <div className="space-y-1.5 pt-1">
+                    <JobAdvanceButton job={job} />
+                    <Button asChild variant="link" size="sm" className="h-auto p-0">
+                      <Link href={job.href}>{t('openJob')}</Link>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             );

@@ -57,6 +57,7 @@ export async function listOpenJobs(): Promise<OpenJob[]> {
 
     jobs.push({
       key: `order:${line.id}`,
+      id: line.id,
       kind: 'order',
       href: `/orders/${order.id}`,
       reference: order.order_no,
@@ -78,6 +79,7 @@ export async function listOpenJobs(): Promise<OpenJob[]> {
 
     jobs.push({
       key: `alteration:${alteration.id}`,
+      id: alteration.id,
       kind: 'alteration',
       href: `/alterations/${alteration.id}`,
       reference: alteration.alteration_no,
@@ -94,4 +96,16 @@ export async function listOpenJobs(): Promise<OpenJob[]> {
   }
 
   return sortOldestFirst(jobs);
+}
+
+/**
+ * How many jobs are open, for the nav badge (A-FR-9.21).
+ *
+ * Counted from the same two queries the board uses rather than a cheaper
+ * `head: true` count per table, so the badge and the board can never disagree
+ * about what "open" means -- a badge saying 7 above a list showing 5 is worse
+ * than no badge.
+ */
+export async function countOpenJobs(): Promise<number> {
+  return (await listOpenJobs()).length;
 }

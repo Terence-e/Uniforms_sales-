@@ -32,12 +32,17 @@ export function DashboardShell({
   userName,
   roleLabel,
   avatarUrl,
+  openJobCount,
   children
 }: {
   role: UserRole;
   userName: string;
   roleLabel: string;
   avatarUrl?: string | null;
+  /** Open orders and alterations, badged on the nav from every screen
+   *  (A-FR-9.21). Undefined when it could not be read -- the badge is then
+   *  omitted rather than showing a wrong or zero count. */
+  openJobCount?: number;
   children: React.ReactNode;
 }) {
   const t = useTranslations('Nav');
@@ -48,7 +53,7 @@ export function DashboardShell({
     <div className="flex min-h-dvh bg-background">
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r bg-sidebar lg:flex">
-        <SidebarContent items={items} />
+        <SidebarContent items={items} openJobCount={openJobCount} />
       </aside>
 
       {/* Mobile drawer */}
@@ -65,7 +70,12 @@ export function DashboardShell({
                 <XIcon className="size-5" />
               </Button>
             </div>
-            <SidebarContent items={items} onNavigate={() => setMobileOpen(false)} hideHeader />
+            <SidebarContent
+              items={items}
+              openJobCount={openJobCount}
+              onNavigate={() => setMobileOpen(false)}
+              hideHeader
+            />
           </aside>
         </div>
       )}
@@ -128,10 +138,12 @@ export function DashboardShell({
 
 function SidebarContent({
   items,
+  openJobCount,
   onNavigate,
   hideHeader
 }: {
   items: NavItem[];
+  openJobCount?: number;
   onNavigate?: () => void;
   hideHeader?: boolean;
 }) {
@@ -172,6 +184,16 @@ function SidebarContent({
                 <>
                   <Icon className="size-[18px] shrink-0" />
                   <span className="truncate">{label(item)}</span>
+                  {/* Only when there is something to answer for: a "0" badge is
+                      furniture, and the seller stops seeing it. */}
+                  {item.key === 'openJobs' && openJobCount ? (
+                    <Badge
+                      variant={active ? 'secondary' : 'default'}
+                      className="ml-auto tabular-nums text-[10px]"
+                    >
+                      {openJobCount}
+                    </Badge>
+                  ) : null}
                   {!item.href && (
                     <Badge variant="ghost" className="ml-auto text-[10px]">
                       {tDash('planned')}
