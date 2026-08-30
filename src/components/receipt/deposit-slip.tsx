@@ -1,13 +1,16 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
-import { Printer, ArrowLeft } from 'lucide-react';
+import { Printer, ArrowLeft, Copy } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
+import { DuplicateStamp } from '@/components/receipt/duplicate-stamp';
 import { formatDate, formatDateTime, formatMoney, SCHOOL } from '@/lib/format';
 import type { PaymentMethod } from '@/types/database.types';
 
 export type DepositSlipData = {
+  /** A reprint, stamped DUPLICATA / DUPLICATE (A-FR-7.12). */
+  duplicate?: boolean;
   alteration_no: string;
   received_at: string;
   expected_ready_date: string | null;
@@ -39,6 +42,7 @@ export type DepositSlipData = {
  */
 export function DepositSlip({ slip }: { slip: DepositSlipData }) {
   const t = useTranslations('Alterations');
+  const tReceipt = useTranslations('Receipt');
   const tSales = useTranslations('Sales');
   const locale = useLocale();
 
@@ -69,10 +73,20 @@ export function DepositSlip({ slip }: { slip: DepositSlipData }) {
             {t('backToAlteration')}
           </Link>
         </Button>
-        <Button size="sm" onClick={() => window.print()}>
-          <Printer className="size-4" />
-          {t('printSlip')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {!slip.duplicate ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/alterations/${slip.alteration_id}/slip?reprint=1`}>
+                <Copy className="size-4" />
+                {tReceipt('reprint')}
+              </Link>
+            </Button>
+          ) : null}
+          <Button size="sm" onClick={() => window.print()}>
+            <Printer className="size-4" />
+            {t('printSlip')}
+          </Button>
+        </div>
       </div>
 
       <article className="receipt-sheet mx-auto max-w-xl rounded-lg border bg-white p-8 text-black shadow-sm">
@@ -93,6 +107,7 @@ export function DepositSlip({ slip }: { slip: DepositSlipData }) {
               Vêtement confié à l&apos;école · Garment held by the school
             </p>
           </div>
+          {slip.duplicate ? <DuplicateStamp /> : null}
         </header>
 
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 border-b py-4 text-xs">

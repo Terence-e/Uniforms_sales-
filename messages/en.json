@@ -540,6 +540,7 @@
     "paymentMethod": "Paid by",
     "signature": "Signature",
     "footer": "Thank you for your purchase. Goods sold are exchangeable within 7 days with this receipt.",
+    "reprint": "Reprint",
     "print": "Print receipt",
     "back": "Back to sales"
   },
