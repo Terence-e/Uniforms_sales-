@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { logAudit } from '@/lib/audit';
 import {
-  computeLineTotal,
   computeTotals,
   saleSchema,
   type SaleInput
@@ -48,45 +47,33 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
   const sale = parsed.data;
   const { subtotal, discount, total } = computeTotals(sale.items, sale.discount);
 
+  // One transaction: the header, the lines, and the SAL-YYYY-NNNN draw all
+  // happen inside record_sale(). A failure rolls the reference back too, so the
+  // sequence never gains a gap -- unlike the old header-then-items pair, where a
+  // failed second call left a burned number and a deleted row (a false "a
+  // document was concealed" signal). Totals are recomputed inside the function.
   const { data: inserted, error: saleError } = await supabase
-    .from('sales')
-    .insert({
-      customer_name: sale.customerName,
-      student_name: sale.studentName,
-      class_level: sale.classLevel,
-      phone: sale.phone,
-      payment_method: sale.paymentMethod,
-      subtotal,
-      discount,
-      total,
-      notes: sale.notes,
-      signature_url: sale.signature,
-      seller_id: user.id
+    .rpc('record_sale', {
+      p_customer_name: sale.customerName,
+      p_student_name: sale.studentName,
+      p_class_level: sale.classLevel,
+      p_phone: sale.phone,
+      p_payment_method: sale.paymentMethod,
+      p_discount: discount,
+      p_notes: sale.notes,
+      p_signature_url: sale.signature,
+      p_items: sale.items.map((item) => ({
+        product_id: item.productId,
+        description: item.description,
+        size: item.size,
+        unit_price: item.unitPrice,
+        quantity: item.quantity
+      }))
     })
-    .select('id, receipt_no')
     .single();
 
   if (saleError || !inserted) {
     return { ok: false, error: saleError?.message ?? 'insertFailed' };
-  }
-
-  const { error: itemsError } = await supabase.from('sale_items').insert(
-    sale.items.map((item) => ({
-      sale_id: inserted.id,
-      product_id: item.productId,
-      description: item.description,
-      size: item.size,
-      unit_price: item.unitPrice,
-      quantity: item.quantity,
-      line_total: computeLineTotal(item)
-    }))
-  );
-
-  if (itemsError) {
-    // Postgres has no transaction across two PostgREST calls, so undo by hand.
-    // A sale with no lines would silently corrupt every report.
-    await supabase.from('sales').delete().eq('id', inserted.id);
-    return { ok: false, error: itemsError.message };
   }
 
   // Audited (A-FR-11.1). Records the receipt, totals and line count -- enough to

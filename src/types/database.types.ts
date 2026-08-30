@@ -626,7 +626,6 @@ export type Database = {
       can_oversee: { Args: Record<string, never>; Returns: boolean };
       can_operate: { Args: Record<string, never>; Returns: boolean };
       current_user_role: { Args: Record<string, never>; Returns: UserRole };
-      next_receipt_no: { Args: Record<string, never>; Returns: string };
       count_active_users: { Args: Record<string, never>; Returns: number };
       next_reference: { Args: { p_prefix: string }; Returns: string };
       order_status_rank: { Args: { s: OrderStatus }; Returns: number };
@@ -647,6 +646,35 @@ export type Database = {
           p_note: string | null;
         };
         Returns: string;
+      };
+      record_sale: {
+        Args: {
+          p_customer_name: string;
+          p_student_name: string | null;
+          p_class_level: string | null;
+          p_phone: string | null;
+          p_payment_method: PaymentMethod;
+          p_discount: number;
+          p_notes: string | null;
+          p_signature_url: string | null;
+          p_items: Json;
+        };
+        Returns: { id: string; receipt_no: string }[];
+      };
+      record_order: {
+        Args: {
+          p_customer_name: string;
+          p_student_name: string | null;
+          p_class_level: string | null;
+          p_phone: string | null;
+          p_payment_method: PaymentMethod;
+          p_discount: number;
+          p_expected_ready_date: string | null;
+          p_measurements: string | null;
+          p_notes: string | null;
+          p_items: Json;
+        };
+        Returns: { id: string; order_no: string }[];
       };
     };
     Enums: {
