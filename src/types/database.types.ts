@@ -617,6 +617,55 @@ export type Database = {
           }
         ];
       };
+      bug_reports: {
+        Row: {
+          id: string;
+          reported_at: string;
+          reporter_id: string | null;
+          reporter_name: string | null;
+          description: string;
+          page_url: string | null;
+          user_agent: string | null;
+          screenshot: string | null;
+          resolved_at: string | null;
+          resolved_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          reported_at?: string;
+          reporter_id?: string | null;
+          reporter_name?: string | null;
+          description: string;
+          page_url?: string | null;
+          user_agent?: string | null;
+          screenshot?: string | null;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          reported_at?: string;
+          reporter_id?: string | null;
+          reporter_name?: string | null;
+          description?: string;
+          page_url?: string | null;
+          user_agent?: string | null;
+          screenshot?: string | null;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'bug_reports_reporter_id_fkey';
+            columns: ['reporter_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       collections: {
         Row: {
           id: string;
@@ -708,6 +757,7 @@ export type Database = {
     Functions: {
       is_admin: { Args: Record<string, never>; Returns: boolean };
       is_super_admin: { Args: Record<string, never>; Returns: boolean };
+      is_maintenance: { Args: Record<string, never>; Returns: boolean };
       can_oversee: { Args: Record<string, never>; Returns: boolean };
       can_operate: { Args: Record<string, never>; Returns: boolean };
       current_user_role: { Args: Record<string, never>; Returns: UserRole };
@@ -763,5 +813,6 @@ export type StockMovement = Tables<'stock_movements'>;
 export type Order = Tables<'orders'>;
 export type OrderItem = Tables<'order_items'>;
 export type Alteration = Tables<'alterations'>;
+export type BugReport = Tables<'bug_reports'>;
 export type Collection = Tables<'collections'>;
 export type CollectionItem = Tables<'collection_items'>;
