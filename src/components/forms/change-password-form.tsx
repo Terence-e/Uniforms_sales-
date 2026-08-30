@@ -68,6 +68,7 @@ export function ChangePasswordForm({
       {/* Hidden username field: lets browsers/password managers associate the new
           password with the account, and clears the a11y warning. */}
       <input
+        suppressHydrationWarning
         type="text"
         name="username"
         autoComplete="username"
@@ -91,6 +92,7 @@ export function ChangePasswordForm({
             aria-invalid={Boolean(errors.current)}
           />
           <button
+            suppressHydrationWarning
             type="button"
             onClick={() => setShow((s) => !s)}
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"

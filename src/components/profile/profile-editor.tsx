@@ -125,6 +125,7 @@ export function ProfileEditor({
     <div className="rounded-2xl border bg-card p-6 shadow-sm">
       <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
         <button
+          suppressHydrationWarning
           type="button"
           onClick={() => setOpen(true)}
           className="group relative rounded-full outline-none ring-offset-2 ring-offset-card focus-visible:ring-2 focus-visible:ring-ring"
@@ -178,6 +179,7 @@ export function ProfileEditor({
               <Avatar url={avatar} fallback={fallback} className="size-16 text-xl" />
               <div className="flex flex-wrap gap-2">
                 <input
+                  suppressHydrationWarning
                   ref={fileRef}
                   type="file"
                   accept="image/*"

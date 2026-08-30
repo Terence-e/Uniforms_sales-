@@ -92,6 +92,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string | null }) {
             aria-describedby={state.fieldErrors.password ? 'password-error' : undefined}
           />
           <button
+            suppressHydrationWarning
             type="button"
             onClick={() => setShowPassword((s) => !s)}
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
