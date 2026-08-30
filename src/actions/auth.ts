@@ -81,10 +81,15 @@ export async function signIn(
   const locale = await getLocale();
   revalidatePath('/', 'layout');
 
-  // Every user's first screen is their role dashboard overview -- always, even
-  // when they were deep-linking somewhere else. The locale-aware `redirect`
-  // adds the locale prefix itself, so the path passed in must not carry one.
-  redirect({ href: '/dashboard', locale });
+  // Sent to the locale index rather than to a named screen, because where a
+  // user starts depends on their role -- a seller lands on the open-jobs board,
+  // everyone else on the dashboard -- and that rule lives in one place,
+  // app/[locale]/page.tsx. Hard-coding a destination here would be a second
+  // copy of it that quietly drifts.
+  //
+  // Still ignores `redirectTo`: the first screen after signing in is the one
+  // the role calls for, even when the user was deep-linking somewhere else.
+  redirect({ href: '/', locale });
 
   // `redirect` throws, so this is unreachable -- it only exists because the
   // helper isn't typed as `never` and useActionState needs a concrete state type.

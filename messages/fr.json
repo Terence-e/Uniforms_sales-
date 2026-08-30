@@ -373,6 +373,25 @@
       "cancelled": "Annul\u00e9e"
     }
   },
+  "OpenJobs": {
+    "title": "Travaux en cours",
+    "subtitle": "Toutes les commandes et retouches non clôturées. Les plus anciennes d’abord.",
+    "searchPlaceholder": "Rechercher élève, parent ou référence…",
+    "all": "Tout",
+    "stage": {
+      "waiting": "En attente",
+      "in_progress": "En cours",
+      "ready": "Prêt"
+    },
+    "daysOpen": "{days} jour(s)",
+    "openedOn": "Ouvert le {date}",
+    "expectedOn": "Prévu le {date}",
+    "openJob": "Ouvrir",
+    "nothingOpen": "Aucun travail en cours. Tout a été retiré, restitué ou annulé.",
+    "noMatches": "Aucun travail ne correspond à cette recherche.",
+    "kindOrder": "Commande",
+    "kindAlteration": "Retouche"
+  },
   "Alterations": {
     "title": "Retouches",
     "subtitle": "Réceptionner un vêtement appartenant au parent, à retoucher ou réparer.",

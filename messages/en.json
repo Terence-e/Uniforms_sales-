@@ -373,6 +373,25 @@
       "cancelled": "Cancelled"
     }
   },
+  "OpenJobs": {
+    "title": "Open jobs",
+    "subtitle": "Every order and alteration not yet closed. Oldest first.",
+    "searchPlaceholder": "Search student, parent or reference…",
+    "all": "All",
+    "stage": {
+      "waiting": "Waiting",
+      "in_progress": "In progress",
+      "ready": "Ready"
+    },
+    "daysOpen": "{days} day(s) open",
+    "openedOn": "Opened {date}",
+    "expectedOn": "Expected {date}",
+    "openJob": "Open",
+    "nothingOpen": "Nothing is open. Everything has been collected, returned or cancelled.",
+    "noMatches": "No open job matches that search.",
+    "kindOrder": "Order",
+    "kindAlteration": "Alteration"
+  },
   "Alterations": {
     "title": "Alterations",
     "subtitle": "Take in a garment the parent already owns, to be resized or repaired.",
