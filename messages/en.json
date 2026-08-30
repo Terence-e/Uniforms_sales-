@@ -450,6 +450,7 @@
     "recording": "Recording…",
     "batchTotal": "{units} garments across {lines} line(s)",
     "success": "{units} garments recorded across {lines} line(s).",
+    "waitingOrders": "{orders} order(s) waiting for this size — {units} garment(s)",
     "recent": "Recent production"
   },
   "Errors": {

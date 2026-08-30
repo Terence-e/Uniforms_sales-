@@ -450,6 +450,7 @@
     "recording": "Enregistrement…",
     "batchTotal": "{units} articles sur {lines} ligne(s)",
     "success": "{units} articles enregistrés sur {lines} ligne(s).",
+    "waitingOrders": "{orders} commande(s) en attente pour cette taille — {units} article(s)",
     "recent": "Production récente"
   },
   "Errors": {

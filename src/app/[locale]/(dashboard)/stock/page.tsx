@@ -5,6 +5,7 @@ import {
   listStock,
   listTailorNames
 } from '@/actions/stock';
+import { listWaitingOrderCounts } from '@/actions/orders';
 import { ProductionForm } from '@/components/forms/production-form';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,11 +31,14 @@ export default async function StockPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [products, stock, tailors, recent, t, tProd] = await Promise.all([
+  // Fetched with the page rather than per selection: picking a product then
+  // shows its waiting count instantly instead of waiting on a round trip.
+  const [products, stock, tailors, recent, waiting, t, tProd] = await Promise.all([
     listProducts(),
     listStock(),
     listTailorNames(),
     listRecentProduction(10),
+    listWaitingOrderCounts(),
     getTranslations('Stock'),
     getTranslations('Production')
   ]);
@@ -49,7 +53,7 @@ export default async function StockPage({ params }: Props) {
         <p className="text-sm text-muted-foreground">{tProd('subtitle')}</p>
       </div>
 
-      <ProductionForm products={products} tailors={tailors} />
+      <ProductionForm products={products} tailors={tailors} waiting={waiting} />
 
       {recent.length > 0 ? (
         <Card>
