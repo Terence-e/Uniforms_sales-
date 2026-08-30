@@ -1,10 +1,15 @@
+import { isReprintRequest, logReprint } from '@/actions/reprints';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getOrderWithItems } from '@/actions/orders';
 import { ReceiptPrint, type ReceiptData } from '@/components/receipt/receipt-print';
 import { deriveOrderStatus } from '@/lib/order-status';
 
-type Props = { params: Promise<{ locale: string; id: string }> };
+type Props = {
+  params: Promise<{ locale: string; id: string }>;
+  /** `?reprint=1` marks the sheet DUPLICATA / DUPLICATE and logs it. */
+  searchParams: Promise<{ reprint?: string }>;
+};
 
 export async function generateMetadata({ params }: Props) {
   const { locale, id } = await params;
@@ -13,7 +18,7 @@ export async function generateMetadata({ params }: Props) {
   return { title: order ? `${t('orderTitle')} ${order.order_no}` : t('orderTitle') };
 }
 
-export default async function OrderReceiptPage({ params }: Props) {
+export default async function OrderReceiptPage({ params, searchParams }: Props) {
   const { locale, id } = await params;
   setRequestLocale(locale);
 
@@ -22,7 +27,16 @@ export default async function OrderReceiptPage({ params }: Props) {
   const order = await getOrderWithItems(id);
   if (!order) notFound();
 
+
+  // A reprint is stamped and recorded; the plain URL stays the original
+  // (A-FR-7.12).
+  const duplicate = await isReprintRequest(searchParams);
+  if (duplicate) {
+    await logReprint({ kind: 'order', id: order.id, reference: order.order_no });
+  }
   const receipt: ReceiptData = {
+    duplicate,
+    record_id: order.id,
     kind: 'order',
     // Derived from the lines, the same rule the detail page and the order list
     // use -- so all three agree about what this order currently is.

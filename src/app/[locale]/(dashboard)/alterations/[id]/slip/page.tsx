@@ -1,9 +1,14 @@
+import { isReprintRequest, logReprint } from '@/actions/reprints';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getAlteration } from '@/actions/alterations';
 import { DepositSlip, type DepositSlipData } from '@/components/receipt/deposit-slip';
 
-type Props = { params: Promise<{ locale: string; id: string }> };
+type Props = {
+  params: Promise<{ locale: string; id: string }>;
+  /** `?reprint=1` marks the sheet DUPLICATA / DUPLICATE and logs it. */
+  searchParams: Promise<{ reprint?: string }>;
+};
 
 export async function generateMetadata({ params }: Props) {
   const { locale, id } = await params;
@@ -14,14 +19,22 @@ export async function generateMetadata({ params }: Props) {
   };
 }
 
-export default async function DepositSlipPage({ params }: Props) {
+export default async function DepositSlipPage({ params, searchParams }: Props) {
   const { locale, id } = await params;
   setRequestLocale(locale);
 
   const alteration = await getAlteration(id);
   if (!alteration) notFound();
 
+
+  // A reprint is stamped and recorded; the plain URL stays the original
+  // (A-FR-7.12).
+  const duplicate = await isReprintRequest(searchParams);
+  if (duplicate) {
+    await logReprint({ kind: 'alteration', id: alteration.id, reference: alteration.alteration_no });
+  }
   const slip: DepositSlipData = {
+    duplicate,
     alteration_id: alteration.id,
     alteration_no: alteration.alteration_no,
     received_at: alteration.received_at,

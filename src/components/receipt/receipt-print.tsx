@@ -1,9 +1,10 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
-import { Printer, ArrowLeft } from 'lucide-react';
+import { Printer, ArrowLeft, Copy } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
+import { DuplicateStamp } from '@/components/receipt/duplicate-stamp';
 import { formatDate, formatDateTime, formatMoney, SCHOOL } from '@/lib/format';
 import type { OrderStatus, PaymentMethod } from '@/types/database.types';
 
@@ -16,6 +17,13 @@ export type ReceiptData = {
   kind?: 'sale' | 'order';
   /** Carries `order_no` when kind is 'order'; the label switches with it. */
   receipt_no: string;
+  /**
+   * A reprint, stamped DUPLICATA / DUPLICATE (A-FR-7.12). Set by the route from
+   * the reprint URL, never inferred here -- the sheet renders what it is told.
+   */
+  duplicate?: boolean;
+  /** The sale or order id, so the sheet can link to its own reprint. */
+  record_id: string;
   /** Orders only. */
   expected_ready_date?: string | null;
   measurements?: string | null;
@@ -60,6 +68,10 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
   const tPayment = useTranslations('Sales.payment');
   const locale = useLocale();
   const isOrder = receipt.kind === 'order';
+  // Where this sheet lives, so the reprint link can point back at itself.
+  const basePath = isOrder
+    ? `/orders/${receipt.record_id}/receipt`
+    : `/sales/${receipt.record_id}/receipt`;
 
   return (
     <>
@@ -89,10 +101,22 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
             {isOrder ? t('backToOrders') : t('back')}
           </Link>
         </Button>
-        <Button size="sm" onClick={() => window.print()}>
-          <Printer className="size-4" />
-          {t('print')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Offered only on an original. From a duplicate the link would just
+              reload the same stamped sheet and log another reprint. */}
+          {!receipt.duplicate ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`${basePath}?reprint=1`}>
+                <Copy className="size-4" />
+                {t('reprint')}
+              </Link>
+            </Button>
+          ) : null}
+          <Button size="sm" onClick={() => window.print()}>
+            <Printer className="size-4" />
+            {t('print')}
+          </Button>
+        </div>
       </div>
 
       <article className="receipt-sheet mx-auto max-w-xl rounded-lg border bg-white p-8 text-black shadow-sm">
@@ -131,6 +155,7 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
           ) : (
             <p className="mt-2 text-sm font-semibold uppercase">{t('title')}</p>
           )}
+          {receipt.duplicate ? <DuplicateStamp /> : null}
         </header>
 
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 border-b py-4 text-xs">
