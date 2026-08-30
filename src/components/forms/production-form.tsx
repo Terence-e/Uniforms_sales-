@@ -5,7 +5,7 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { Trash2, Plus, Factory } from 'lucide-react';
+import { Trash2, Plus, Factory, ClipboardList } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { recordProductionBatch } from '@/actions/stock';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import type { ProductOption } from '@/components/forms/sale-form';
+import type { WaitingCount } from '@/actions/orders';
 import { toDateInputValue } from '@/lib/format';
 import {
   EMPTY_PRODUCTION_LINE,
@@ -43,10 +44,13 @@ import {
 
 export function ProductionForm({
   products,
-  tailors
+  tailors,
+  waiting
 }: {
   products: ProductOption[];
   tailors: string[];
+  /** product_id -> outstanding orders waiting on it (A-FR-9.11). */
+  waiting: Record<string, WaitingCount>;
 }) {
   const t = useTranslations('Production');
   const tSales = useTranslations('Sales');
@@ -133,6 +137,8 @@ export function ProductionForm({
         <CardContent className="space-y-4">
           {fields.map((field, index) => {
             const lineErrors = formState.errors.lines?.[index];
+            const chosen = watchedLines?.[index]?.productId;
+            const waitingHere = chosen ? waiting[chosen] : undefined;
             return (
               <div key={field.id} className="grid gap-3 rounded-lg border p-3 sm:grid-cols-12">
                 <div className="sm:col-span-8">
@@ -158,6 +164,20 @@ export function ProductionForm({
                   {lineErrors?.productId ? (
                     <p className="mt-1 text-xs text-destructive">
                       {message(lineErrors.productId.message)}
+                    </p>
+                  ) : null}
+
+                  {/* Informational only -- it never blocks the entry. Absent
+                      entirely when nothing is waiting, rather than showing a
+                      zero, so it reads as news and not as a permanent label
+                      (A-FR-9.11). */}
+                  {waitingHere ? (
+                    <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-500">
+                      <ClipboardList className="size-3.5 shrink-0" />
+                      {t('waitingOrders', {
+                        orders: waitingHere.orders,
+                        units: waitingHere.units
+                      })}
                     </p>
                   ) : null}
                 </div>
