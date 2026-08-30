@@ -89,8 +89,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Already signed in and asking for /login: send them to the locale index,
+  // which decides by role. The middleware deliberately does not make that
+  // choice itself -- it would need the profile row, and the rule already has a
+  // home in app/[locale]/page.tsx.
   if (user && isPublic) {
-    return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
+    return NextResponse.redirect(new URL(`/${locale}`, request.url));
   }
 
   return response;
