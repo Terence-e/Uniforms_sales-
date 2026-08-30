@@ -59,6 +59,8 @@ export function alterationStage(status: AlterationStatus): JobStage | null {
 export type OpenJob = {
   /** Unique across both sources, so React keys and links stay unambiguous. */
   key: string;
+  /** The row the one-tap action targets: the order LINE, or the alteration. */
+  id: string;
   kind: JobKind;
   /** The row to link to: the order, or the alteration. */
   href: string;
@@ -90,6 +92,29 @@ export function daysOpen(openedAt: string, now: Date = new Date()): number {
   const a = Date.UTC(opened.getFullYear(), opened.getMonth(), opened.getDate());
   const b = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   return Math.max(0, Math.round((b - a) / 86_400_000));
+}
+
+/**
+ * A job is "aged" after a week (A-FR-9.19). Seven days is the shop's own
+ * threshold, not an arbitrary one: a uniform ordered on Monday and still not
+ * started the following Monday has been forgotten rather than delayed.
+ */
+export const AGED_AFTER_DAYS = 7;
+
+/**
+ * How loudly a card should complain, in one place so the board, the badge and
+ * anything added later cannot disagree about what counts as late.
+ *
+ * Past-expected outranks age deliberately (A-FR-9.20): a job three days old
+ * that was promised yesterday is a broken promise, while one eight days old
+ * with no date given is merely slow. The first needs answering today.
+ */
+export type JobFlag = 'none' | 'aged' | 'overdue';
+
+export function jobFlag(job: OpenJob, now: Date = new Date()): JobFlag {
+  if (isOverdue(job, now)) return 'overdue';
+  if (daysOpen(job.openedAt, now) > AGED_AFTER_DAYS) return 'aged';
+  return 'none';
 }
 
 /** Past its expected date and still not finished. Drives the flag on the card. */
