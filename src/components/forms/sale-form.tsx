@@ -7,7 +7,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Trash2, Plus } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
-import { createSale } from '@/actions/sales';
+import { createSale, type Shortfall } from '@/actions/sales';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,14 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 import { SignaturePad } from '@/components/signature-pad';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -63,6 +71,7 @@ const DEFAULTS: SaleInput = {
   items: [{ ...EMPTY_SALE_ITEM }],
   discount: 0,
   discountReason: null,
+  belowStockAck: false,
   notes: null,
   signature: null,
   recordedBy: null,
@@ -86,6 +95,9 @@ export function SaleForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [signature, setSignature] = useState<string | null>(null);
+  /** Set when the server answers 'belowStock'; drives the confirm dialog. */
+  const [shortfalls, setShortfalls] = useState<Shortfall[] | null>(null);
+  const [pending, setPending] = useState<SaleInput | null>(null);
 
   const form = useForm<SaleInput>({
     resolver: standardSchemaResolver(saleSchema),
@@ -150,9 +162,23 @@ export function SaleForm({
     return known.includes(key) ? tv(key as never) : key;
   }
 
-  const onSubmit = handleSubmit((values) => {
+  /**
+   * Sends the sale. Called first without consent; if the server comes back
+   * asking about stock, called again with it once the seller confirms.
+   */
+  function send(values: SaleInput, belowStockAck: boolean) {
     startTransition(async () => {
-      const result = await createSale({ ...values, signature });
+      const result = await createSale({ ...values, signature, belowStockAck });
+
+      // `in` rather than comparing error: the other failure branch types
+      // `error` as string, which also accepts 'belowStock', so it cannot narrow
+      // the union on its own.
+      if (!result.ok && 'shortfalls' in result) {
+        // Not a failure -- a question. Hold the sale and ask (A-FR-5.6).
+        setShortfalls(result.shortfalls);
+        setPending(values);
+        return;
+      }
 
       if (!result.ok) {
         if (result.error === 'validation' && result.fieldErrors) {
@@ -173,9 +199,13 @@ export function SaleForm({
       toast.success(t('success', { receiptNo: result.receiptNo }));
       form.reset(DEFAULTS);
       setSignature(null);
+      setShortfalls(null);
+      setPending(null);
       router.push(`/sales/${result.saleId}/receipt`);
     });
-  });
+  }
+
+  const onSubmit = handleSubmit((values) => send(values, false));
 
   const itemsError = formState.errors.items?.message ?? formState.errors.items?.root?.message;
 
@@ -488,6 +518,64 @@ export function SaleForm({
       <Button type="submit" size="lg" disabled={isPending} className="w-full sm:w-auto">
         {isPending ? t('submitting') : t('submit')}
       </Button>
+
+      {/* Warns, never blocks. Cancelling writes nothing at all -- no sale, no
+          audit row; only a completed override is worth recording. */}
+      <Dialog
+        open={shortfalls !== null}
+        onOpenChange={(next) => {
+          if (!next) {
+            setShortfalls(null);
+            setPending(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('belowStockTitle')}</DialogTitle>
+            <DialogDescription>{t('belowStockHint')}</DialogDescription>
+          </DialogHeader>
+
+          <ul className="space-y-2 text-sm">
+            {(shortfalls ?? []).map((line) => (
+              <li
+                key={line.description}
+                className="flex items-baseline justify-between gap-3 rounded-lg border p-3"
+              >
+                <span className="font-medium">{line.description}</span>
+                <span className="tabular-nums text-muted-foreground">
+                  {t('belowStockLine', {
+                    requested: line.requested,
+                    available: line.available
+                  })}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShortfalls(null);
+                setPending(null);
+              }}
+            >
+              {t('belowStockCancel')}
+            </Button>
+            <Button
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                if (pending) send(pending, true);
+              }}
+            >
+              {t('belowStockConfirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }

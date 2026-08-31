@@ -96,7 +96,16 @@ export const saleSchema = z
      */
     paymentReference: z.string().trim().max(100).nullable().default(null),
     /** Phase 2: data URL captured by the signature pad. */
-    signature: z.string().nullable().default(null)
+    signature: z.string().nullable().default(null),
+    /**
+     * The seller saw the below-stock warning and chose to continue (A-FR-5.6).
+     *
+     * Carries consent only, never facts. The server recomputes availability
+     * itself, because the figure the browser was holding may be minutes old --
+     * and if the browser decided, a stale number would mean no warning shown
+     * AND no override recorded, which is the one outcome nobody would notice.
+     */
+    belowStockAck: z.boolean().default(false)
   })
   .superRefine((sale, ctx) => {
     const subtotal = computeSubtotal(sale.items);
