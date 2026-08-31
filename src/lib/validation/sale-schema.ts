@@ -34,9 +34,20 @@ export const money = z.coerce
   .transform(toMoney);
 
 export const saleItemSchema = z.object({
-  productId: z.uuid({ message: 'required' }).nullable().default(null),
+  /**
+   * Required on a SALE line (A-FR-6.6): the price is taken from this product,
+   * so a line without one has no price to be checked against. Orders keep a
+   * nullable product because ordering a size the catalogue does not carry is
+   * the whole point of an order.
+   */
+  productId: z.uuid({ message: 'selectProduct' }),
   description: z.string({ message: 'required' }).trim().min(1, { message: 'required' }).max(200),
   size: z.string().trim().max(20).nullable().default(null),
+  /**
+   * Accepted for the running total the form draws, and then ignored: the server
+   * re-reads the catalogue price and writes that. Anything typed here is
+   * decoration, and the database refuses a line priced any other way.
+   */
   unitPrice: money,
   quantity: z.coerce
     .number({ message: 'positive' })
@@ -58,6 +69,13 @@ export const saleSchema = z
     paymentMethod: z.enum(PAYMENT_METHODS, { message: 'required' }).default('cash'),
     items: z.array(saleItemSchema).min(1, { message: 'minItems' }).max(50),
     discount: money.default(0),
+    /**
+     * Mandatory once a discount is applied (A-FR-6.7). Every reduction goes
+     * through this field precisely so that every reduction has an explanation
+     * attached -- a seller who could quietly lower a price would leave nothing
+     * behind.
+     */
+    discountReason: z.string().trim().max(500).nullable().default(null),
     notes: z.string().trim().max(500).nullable().default(null),
     /**
      * Who keyed the sale and who took the money (A-FR-6.4, A-FR-6.5). Two
@@ -87,6 +105,13 @@ export const saleSchema = z
         code: 'custom',
         path: ['discount'],
         message: 'discountTooLarge'
+      });
+    }
+    if (sale.discount > 0 && (sale.discountReason ?? '').trim().length < 3) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['discountReason'],
+        message: 'reasonRequired'
       });
     }
   });
@@ -125,7 +150,10 @@ export function computeTotals(items: readonly LineLike[], discount: number) {
 // ------------------------------------------------------------------ empty row
 
 export const EMPTY_SALE_ITEM: SaleItemInput = {
-  productId: null,
+  // Empty rather than null: a sale line must name a product, and the form shows
+  // "select a product" until one is chosen. The order form, whose lines may
+  // legitimately have no product, overrides this in EMPTY_ORDER_ITEM.
+  productId: '',
   description: '',
   size: null,
   unitPrice: 0,

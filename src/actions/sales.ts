@@ -46,7 +46,41 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
   if (!user) return { ok: false, error: 'unauthorized' };
 
   const sale = parsed.data;
-  const { subtotal, discount, total } = computeTotals(sale.items, sale.discount);
+
+  /*
+   * Prices are read from the catalogue and the submitted ones are discarded
+   * (A-FR-6.6).
+   *
+   * Validating what the browser sent and rejecting a mismatch would fail an
+   * honest seller for a race they did not cause -- someone edits a price while
+   * the form is open, and the sale bounces. Re-reading instead means the sale
+   * always goes through at the price the catalogue holds right now, and the
+   * database trigger exists purely to stop a direct API call, not to police
+   * this function.
+   */
+  const productIds = sale.items.map((item) => item.productId);
+  const { data: catalogue } = await supabase
+    .from('products')
+    .select('id, unit_price, is_active')
+    .in('id', productIds);
+
+  const priceOf = new Map((catalogue ?? []).map((p) => [p.id, p]));
+
+  for (const item of sale.items) {
+    const product = priceOf.get(item.productId);
+    if (!product) return { ok: false, error: 'unknownProduct' };
+    // An archived product cannot be sold: it was withdrawn for a reason, and
+    // its price may be stale.
+    if (!product.is_active) return { ok: false, error: 'productInactive' };
+  }
+
+  // Rebuilt from catalogue prices, never from the payload.
+  const pricedItems = sale.items.map((item) => ({
+    ...item,
+    unitPrice: priceOf.get(item.productId)!.unit_price
+  }));
+
+  const { subtotal, discount, total } = computeTotals(pricedItems, sale.discount);
 
   const { data: inserted, error: saleError } = await supabase
     .from('sales')
@@ -60,6 +94,7 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
       discount,
       total,
       notes: sale.notes,
+      discount_reason: sale.discount > 0 ? sale.discountReason : null,
       signature_url: sale.signature,
       payment_reference: sale.paymentReference,
       // Attribution: who keyed it, who took the money. Defaulted to the
@@ -81,7 +116,7 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
   }
 
   const { error: itemsError } = await supabase.from('sale_items').insert(
-    sale.items.map((item) => ({
+    pricedItems.map((item) => ({
       sale_id: inserted.id,
       product_id: item.productId,
       description: item.description,
@@ -116,6 +151,33 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
       item_count: sale.items.length
     }
   });
+
+  // A discount is a reduction someone authorised, so it is recorded as such
+  // (A-FR-6.7). No audit row when there is no discount -- every sale would
+  // otherwise log an event that says nothing.
+  if (discount > 0) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .single();
+
+    await logAudit({
+      actorId: user.id,
+      actorName: profile?.full_name ?? user.email ?? null,
+      action: 'sale_discounted',
+      entity: inserted.receipt_no,
+      targetTable: 'sales',
+      targetId: inserted.id,
+      meta: {
+        receipt_no: inserted.receipt_no,
+        subtotal,
+        discount,
+        total,
+        reason: sale.discountReason
+      }
+    });
+  }
 
   revalidatePath('/sales', 'page');
   return { ok: true, saleId: inserted.id, receiptNo: inserted.receipt_no };

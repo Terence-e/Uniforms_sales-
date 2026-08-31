@@ -22,6 +22,16 @@ import {
 
 export const orderItemSchema = saleItemSchema.extend({
   /**
+   * Put back to nullable, overriding the sale rule.
+   *
+   * A sale line must name a catalogue product so its price can be checked
+   * against the catalogue (A-FR-6.6). An ORDER line must not: ordering a size
+   * the catalogue does not carry is the entire reason orders exist, and that
+   * line is described rather than selected. Inheriting the sale's stricter rule
+   * here would forbid exactly the case the feature was built for.
+   */
+  productId: z.uuid({ message: 'required' }).nullable().default(null),
+  /**
    * True when the parent takes this line away at the counter. Such a line never
    * enters the status workflow -- the server stores its status as NULL, which
    * the database treats as "no workflow" (A-FR-9.5).
@@ -82,6 +92,8 @@ export type OrderParsed = z.output<typeof orderSchema>;
 
 export const EMPTY_ORDER_ITEM: OrderItemInput = {
   ...EMPTY_SALE_ITEM,
+  // Back to null: an order line legitimately has no catalogue product.
+  productId: null,
   handedOver: false
 };
 
