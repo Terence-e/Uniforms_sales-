@@ -231,6 +231,7 @@ export type Database = {
           discount: number;
           total: number;
           notes: string | null;
+          discount_reason: string | null;
           signature_url: string | null;
           seller_id: string;
           recorded_by: string | null;
@@ -252,6 +253,7 @@ export type Database = {
           discount?: number;
           total: number;
           notes?: string | null;
+          discount_reason?: string | null;
           signature_url?: string | null;
           seller_id: string;
           recorded_by?: string | null;
@@ -273,6 +275,7 @@ export type Database = {
           discount?: number;
           total?: number;
           notes?: string | null;
+          discount_reason?: string | null;
           signature_url?: string | null;
           seller_id?: string;
           recorded_by?: string | null;
@@ -306,7 +309,7 @@ export type Database = {
         Row: {
           id: string;
           sale_id: string;
-          product_id: string | null;
+          product_id: string;
           description: string;
           size: string | null;
           unit_price: number;
@@ -317,7 +320,7 @@ export type Database = {
         Insert: {
           id?: string;
           sale_id: string;
-          product_id?: string | null;
+          product_id: string;
           description: string;
           size?: string | null;
           unit_price: number;

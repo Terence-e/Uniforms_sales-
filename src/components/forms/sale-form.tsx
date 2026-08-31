@@ -62,6 +62,7 @@ const DEFAULTS: SaleInput = {
   paymentMethod: 'cash',
   items: [{ ...EMPTY_SALE_ITEM }],
   discount: 0,
+  discountReason: null,
   notes: null,
   signature: null,
   recordedBy: null,
@@ -129,6 +130,8 @@ export function SaleForm({
       shouldDirty: true
     });
     setValue(`items.${index}.size`, product.size, { shouldDirty: true });
+    // The catalogue price, shown for confirmation. The server re-reads it
+    // anyway, so this is what the seller sees rather than what they send.
     setValue(`items.${index}.unitPrice`, product.unit_price, {
       shouldDirty: true
     });
@@ -343,15 +346,9 @@ export function SaleForm({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input
-                    {...register(`items.${index}.description`)}
-                    placeholder={t('product')}
-                    className="mt-2"
-                    aria-invalid={Boolean(itemErrors?.description)}
-                  />
-                  {itemErrors?.description ? (
+                  {itemErrors?.productId ? (
                     <p className="mt-1 text-xs text-destructive">
-                      {message(itemErrors.description.message)}
+                      {message(itemErrors.productId.message)}
                     </p>
                   ) : null}
                 </div>
@@ -360,13 +357,17 @@ export function SaleForm({
                   <Label className="mb-2 text-xs text-muted-foreground">
                     {t('unitPrice')}
                   </Label>
+                  {/* Read-only, not hidden: the seller must see what they are
+                      charging, but the number comes from the catalogue and is
+                      re-read server-side regardless (A-FR-6.6). Reducing a sale
+                      goes through the discount field, which demands a reason. */}
                   <Input
                     {...register(`items.${index}.unitPrice`)}
                     type="number"
-                    min={0}
-                    step="0.01"
-                    inputMode="decimal"
-                    aria-invalid={Boolean(itemErrors?.unitPrice)}
+                    readOnly
+                    tabIndex={-1}
+                    className="bg-muted/50 text-muted-foreground"
+                    aria-readonly="true"
                   />
                 </div>
 
@@ -446,6 +447,22 @@ export function SaleForm({
                 aria-invalid={Boolean(formState.errors.discount)}
               />
             </Field>
+
+            {/* Appears only when there is a reduction to explain -- a permanent
+                empty field would be one more thing to skip past on the busiest
+                screen in the system. */}
+            {(Number(watchedDiscount) || 0) > 0 ? (
+              <Field
+                label={t('discountReason')}
+                error={message(formState.errors.discountReason?.message)}
+              >
+                <Input
+                  {...register('discountReason')}
+                  placeholder={t('discountReasonHint')}
+                  aria-invalid={Boolean(formState.errors.discountReason)}
+                />
+              </Field>
+            ) : null}
 
             <Field label={t('notes')}>
               <Input {...register('notes')} />
