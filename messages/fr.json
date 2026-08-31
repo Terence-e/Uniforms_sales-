@@ -14,7 +14,6 @@
     "toggleTheme": "Changer de th\u00e8me",
     "menu": "Menu",
     "searchPlaceholder": "Rechercher ventes, re\u00e7us, produits\u2026",
-    "searchHint": "La recherche arrive bient\u00f4t.",
     "notifications": "Notifications",
     "notificationsEmpty": "Vous \u00eates \u00e0 jour.",
     "sections": {
@@ -287,6 +286,32 @@
     "unexpectedError": "Une erreur est survenue. Veuillez r\u00e9essayer.",
     "tooManyAttempts": "Trop de tentatives \u00e9chou\u00e9es. R\u00e9essayez dans quelques minutes.",
     "sessionExpired": "Votre session a expir\u00e9. Veuillez vous reconnecter."
+  },
+  "Search": {
+    "title": "Recherche",
+    "subtitle": "Retrouver une vente, une commande ou une retouche par référence, élève, parent ou téléphone.",
+    "label": "Rechercher",
+    "placeholder": "Référence, élève, parent ou téléphone…",
+    "search": "Rechercher",
+    "from": "Du",
+    "to": "Au",
+    "anyStage": "Tout statut",
+    "open": "Ouvrir",
+    "kind": {
+      "sale": "Ventes",
+      "order": "Commandes",
+      "alteration": "Retouches"
+    },
+    "stage": {
+      "waiting": "En attente",
+      "in_progress": "En cours",
+      "ready": "Prêt"
+    },
+    "resultCount": "{count} résultat(s)",
+    "noResults": "Aucun résultat pour cette recherche.",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "pageOf": "Page {page} sur {pages}"
   },
   "Sales": {
     "title": "Nouvelle vente",
