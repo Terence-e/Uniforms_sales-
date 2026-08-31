@@ -96,6 +96,15 @@ export function SaleForm({
   const [isPending, startTransition] = useTransition();
   const [signature, setSignature] = useState<string | null>(null);
   /** Set when the server answers 'belowStock'; drives the confirm dialog. */
+  /**
+   * Amount tendered, kept in component state rather than in the form values
+   * (A-FR-6.11).
+   *
+   * It is a counting aid, not part of the sale: nothing is stored and nothing
+   * is printed. Keeping it out of the form values means it cannot be submitted
+   * by accident, and the schema stays a description of what a sale actually is.
+   */
+  const [tendered, setTendered] = useState('');
   const [shortfalls, setShortfalls] = useState<Shortfall[] | null>(null);
   const [pending, setPending] = useState<SaleInput | null>(null);
 
@@ -116,6 +125,7 @@ export function SaleForm({
   const watchedItems = useWatch({ control, name: 'items' });
   const watchedDiscount = useWatch({ control, name: 'discount' });
   const watchedMethod = useWatch({ control, name: 'paymentMethod' });
+  const isCash = watchedMethod === 'cash';
   // Cash has no transaction to reference, so the field would be noise.
   const needsReference =
     watchedMethod === 'mobile_money' || watchedMethod === 'orange_money';
@@ -127,6 +137,11 @@ export function SaleForm({
     }));
     return computeTotals(lines, Number(watchedDiscount) || 0);
   }, [watchedItems, watchedDiscount]);
+
+  const tenderedAmount = Number(tendered) || 0;
+  // Signed on purpose: positive is change to hand back, negative is money still
+  // owed. Which of the two is shown is decided in the totals box below.
+  const changeDue = tenderedAmount - totals.total;
 
   const productLabel = (product: ProductOption) => {
     const name = locale === 'fr' ? product.name_fr : product.name_en;
@@ -199,6 +214,7 @@ export function SaleForm({
       toast.success(t('success', { receiptNo: result.receiptNo }));
       form.reset(DEFAULTS);
       setSignature(null);
+      setTendered('');
       setShortfalls(null);
       setPending(null);
       router.push(`/sales/${result.saleId}/receipt`);
@@ -244,9 +260,16 @@ export function SaleForm({
             <Select
               defaultValue="cash"
               onValueChange={(value) =>
-                setValue('paymentMethod', value as SaleInput['paymentMethod'], {
-                  shouldDirty: true
-                })
+                {
+                  setValue('paymentMethod', value as SaleInput['paymentMethod'], {
+                    shouldDirty: true
+                  });
+                  // Cleared here rather than in an effect reacting to the
+                  // change: this IS the change. A tendered amount left behind a
+                  // MoMo sale would be nonsense on screen and would reappear on
+                  // the next cash sale.
+                  if (value !== 'cash') setTendered('');
+                }
               }
             >
               <SelectTrigger className="w-full">
@@ -511,6 +534,49 @@ export function SaleForm({
               value={formatMoney(totals.total, locale)}
               emphasis
             />
+
+            {/* Cash only (A-FR-6.11). For MoMo and Orange Money there is no
+                cash to count back, so the field would be noise on the busiest
+                screen in the system. */}
+            {isCash ? (
+              <div className="space-y-2 border-t pt-3">
+                <Label htmlFor="tendered" className="text-xs text-muted-foreground">
+                  {t('amountTendered')}
+                </Label>
+                <Input
+                  id="tendered"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  inputMode="decimal"
+                  value={tendered}
+                  onChange={(event) => setTendered(event.target.value)}
+                  placeholder={t('amountTenderedHint')}
+                />
+
+                {tendered !== '' ? (
+                  changeDue >= 0 ? (
+                    // The number being counted back into someone's hand, so it
+                    // is the largest thing in the box.
+                    <div className="flex items-baseline justify-between gap-4 pt-1">
+                      <dt className="font-medium">{t('changeDue')}</dt>
+                      <dd className="text-xl font-bold tabular-nums">
+                        {formatMoney(changeDue, locale)}
+                      </dd>
+                    </div>
+                  ) : (
+                    // Not "-500": a negative change reads as an error at a till,
+                    // where "500 still due" reads as an instruction.
+                    <div className="flex items-baseline justify-between gap-4 pt-1 text-amber-600 dark:text-amber-500">
+                      <dt className="font-medium">{t('stillDue')}</dt>
+                      <dd className="text-xl font-bold tabular-nums">
+                        {formatMoney(Math.abs(changeDue), locale)}
+                      </dd>
+                    </div>
+                  )
+                ) : null}
+              </div>
+            ) : null}
           </dl>
         </CardContent>
       </Card>
