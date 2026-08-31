@@ -45,6 +45,14 @@ export type ReceiptData = {
   notes: string | null;
   signature_url: string | null;
   seller_name: string;
+  /**
+   * Both printed, because the spec asks for both (A-FR-6.4, A-FR-6.5) and they
+   * answer different questions. Fall back to the seller for rows written
+   * before the columns existed rather than printing a blank line.
+   */
+  recorded_by_name?: string | null;
+  received_by_name?: string | null;
+  payment_reference?: string | null;
   items: {
     id: string;
     description: string;
@@ -178,7 +186,14 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
           {receipt.class_level ? (
             <Meta label={t('class')} value={receipt.class_level} />
           ) : null}
-          <Meta label={t('servedBy')} value={receipt.seller_name} />
+          <Meta
+            label={t('recordedBy')}
+            value={receipt.recorded_by_name || receipt.seller_name}
+          />
+          <Meta
+            label={t('receivedBy')}
+            value={receipt.received_by_name || receipt.seller_name}
+          />
         </dl>
 
         <table className="w-full border-collapse py-4 text-xs">
@@ -242,6 +257,11 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
         <p className="mt-3 text-xs">
           <span className="text-neutral-600">{t('paymentMethod')}: </span>
           {tPayment(receipt.payment_method)}
+          {/* The transaction ID is what a parent quotes when a mobile payment
+              is disputed, so it belongs on the paper they keep. */}
+          {receipt.payment_reference ? (
+            <span className="font-mono"> · {receipt.payment_reference}</span>
+          ) : null}
         </p>
 
         {isOrder && receipt.measurements ? (

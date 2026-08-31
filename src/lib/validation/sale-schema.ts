@@ -9,7 +9,16 @@ import { z } from 'zod';
  * `useValidationMessage()` in the form. See messages/en.json.
  */
 
-export const PAYMENT_METHODS = ['cash', 'mobile_money', 'bank_transfer'] as const;
+/**
+ * The three the spec names (A-FR-6.3): Cash, MoMo, Orange Money.
+ *
+ * MoMo is stored as 'mobile_money' -- the value predates the requirement and
+ * every existing row using it was MTN, since Orange had no way of being
+ * recorded before. 'bank_transfer' survives in the database type, which cannot
+ * drop values, but is deliberately absent here so nothing new is filed under
+ * it.
+ */
+export const PAYMENT_METHODS = ['cash', 'mobile_money', 'orange_money'] as const;
 export type PaymentMethodValue = (typeof PAYMENT_METHODS)[number];
 
 /** Money is stored as numeric(12,2); round before comparing or persisting. */
@@ -50,6 +59,24 @@ export const saleSchema = z
     items: z.array(saleItemSchema).min(1, { message: 'minItems' }).max(50),
     discount: money.default(0),
     notes: z.string().trim().max(500).nullable().default(null),
+    /**
+     * Who keyed the sale and who took the money (A-FR-6.4, A-FR-6.5). Two
+     * questions, two answers: on a shared till one person is signed in while
+     * another serves the parent, and when the drawer is short at close of day
+     * only the second one helps.
+     *
+     * Both default to the signed-in user in the form. Neither is the RLS
+     * anchor -- `seller_id` still comes from the session and is never accepted
+     * from the payload.
+     */
+    recordedBy: z.uuid({ message: 'required' }).nullable().default(null),
+    receivedBy: z.uuid({ message: 'required' }).nullable().default(null),
+    /**
+     * MoMo or Orange Money transaction ID. Never required: a parent does not
+     * always have it to hand, and refusing the sale over a reference number
+     * would stop the shop working.
+     */
+    paymentReference: z.string().trim().max(100).nullable().default(null),
     /** Phase 2: data URL captured by the signature pad. */
     signature: z.string().nullable().default(null)
   })

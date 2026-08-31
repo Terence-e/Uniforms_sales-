@@ -61,6 +61,16 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
       total,
       notes: sale.notes,
       signature_url: sale.signature,
+      payment_reference: sale.paymentReference,
+      // Attribution: who keyed it, who took the money. Defaulted to the
+      // session user when the form leaves them alone.
+      recorded_by: sale.recordedBy ?? user.id,
+      received_by: sale.receivedBy ?? user.id,
+      // Unchanged and unchangeable: the account that actually submitted this
+      // row, and the value the RLS insert policy checks against auth.uid().
+      // The two attribution columns above sit alongside it rather than
+      // replacing it, so a tampered payload still cannot file a sale under
+      // somebody else's name.
       seller_id: user.id
     })
     .select('id, receipt_no')
@@ -131,8 +141,11 @@ export async function getSaleWithItems(saleId: string) {
     .from('sales')
     .select(
       `id, receipt_no, sold_at, customer_name, student_name, class_level, phone,
-       payment_method, subtotal, discount, total, notes, signature_url,
+       payment_method, payment_reference, subtotal, discount, total, notes,
+       signature_url,
        seller:profiles!sales_seller_id_fkey ( full_name ),
+       recordedBy:profiles!sales_recorded_by_fkey ( full_name ),
+       receivedBy:profiles!sales_received_by_fkey ( full_name ),
        items:sale_items ( id, description, size, unit_price, quantity, line_total )`
     )
     .eq('id', saleId)

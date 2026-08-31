@@ -298,9 +298,13 @@
     "paymentMethod": "Payment method",
     "payment": {
       "cash": "Cash",
-      "mobile_money": "Mobile money",
-      "bank_transfer": "Bank transfer"
+      "mobile_money": "MoMo",
+      "orange_money": "Orange Money"
     },
+    "paymentReference": "Payment reference",
+    "paymentReferenceHint": "MoMo / Orange Money transaction ID",
+    "recordedBy": "Recorded by",
+    "receivedBy": "Payment received by",
     "items": "Items",
     "addItem": "Add item",
     "removeItem": "Remove",
@@ -527,7 +531,8 @@
     "orderFooter": "Thank you. The garment stays in the shop until collected.",
     "backToOrders": "Back to orders",
     "date": "Date",
-    "servedBy": "Served by",
+    "recordedBy": "Recorded by",
+    "receivedBy": "Payment received by",
     "customer": "Customer",
     "student": "Student",
     "class": "Class",
