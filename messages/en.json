@@ -561,6 +561,23 @@
     "size": "Size",
     "quantity": "Quantity"
   },
+  "Adjustment": {
+    "adjust": "Adjust",
+    "title": "Adjust stock",
+    "direction": "Direction",
+    "add": "Add",
+    "remove": "Remove",
+    "quantity": "Quantity",
+    "reason": "Reason",
+    "reasonHint": "e.g. damaged in production, physical count, defect, loss",
+    "resulting": "{from} → {to}",
+    "willGoNegative": "this will go below zero",
+    "ledgerNotice": "The count is not overwritten — the difference is recorded as a movement, so the discrepancy stays visible.",
+    "cancel": "Cancel",
+    "record": "Record adjustment",
+    "recording": "Recording…",
+    "recorded": "Adjustment recorded for {product}."
+  },
   "Production": {
     "title": "Record production",
     "subtitle": "Enter garments as they come out of production. Stock rises from these entries — it is never typed in directly.",
@@ -594,6 +611,7 @@
     "wholeNumber": "Enter a whole number.",
     "discountTooLarge": "Discount cannot exceed the subtotal.",
     "invalidDate": "Enter a valid date.",
+    "nonZero": "Enter a quantity other than zero.",
     "describeMore": "Please describe what happened (at least 10 characters).",
     "nothingToPay": "There is no charge to pay.",
     "workRequired": "Describe the work required (at least 3 characters).",

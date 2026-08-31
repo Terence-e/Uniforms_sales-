@@ -4,7 +4,9 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { logAudit } from '@/lib/audit';
 import {
+  adjustmentSchema,
   productionBatchSchema,
+  type AdjustmentInput,
   type ProductionBatchInput
 } from '@/lib/validation/production-schema';
 import type { StockMovementKind } from '@/types/database.types';
@@ -232,4 +234,85 @@ export async function listRecentProduction(limit = 20) {
     .order('created_at', { ascending: false })
     .limit(limit);
   return data ?? [];
+}
+
+// ------------------------------------------------------------- adjustments
+
+export type AdjustmentResult =
+  | { ok: true }
+  | { ok: false; error: string; fieldErrors?: Record<string, string> };
+
+/**
+ * Corrects a stock level, with a mandatory reason (A-FR-5.5).
+ *
+ * The correction is a MOVEMENT, never a write to stock_levels. That is the
+ * whole discipline of this table: the balance is derived by the
+ * apply_stock_movement trigger, so a count that disagrees is recorded as the
+ * difference rather than by overwriting the number. The old value stays
+ * visible in the ledger, which is what makes an adjustment auditable at all --
+ * overwriting would erase the very discrepancy being reported.
+ *
+ * A single insert, so there is no batch to make atomic and no database function
+ * needed. The audit row is written here rather than by a trigger, because a
+ * trigger on stock_movements would also fire for production and collection
+ * movements, which already record themselves elsewhere and would then be
+ * logged twice.
+ */
+export async function recordStockAdjustment(
+  input: AdjustmentInput
+): Promise<AdjustmentResult> {
+  const parsed = adjustmentSchema.safeParse(input);
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      fieldErrors[issue.path.join('.')] ??= issue.message;
+    }
+    return { ok: false, error: 'validation', fieldErrors };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthorized' };
+
+  const { productId, quantity, reason } = parsed.data;
+
+  const { data: product } = await supabase
+    .from('products')
+    .select('name_en, size')
+    .eq('id', productId)
+    .single();
+
+  const { error } = await supabase.from('stock_movements').insert({
+    product_id: productId,
+    kind: 'adjustment',
+    quantity,
+    note: reason,
+    occurred_on: new Date().toISOString().slice(0, 10),
+    created_by: user.id
+  });
+
+  if (error) return { ok: false, error: error.message };
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', user.id)
+    .single();
+
+  await logAudit({
+    actorId: user.id,
+    actorName: profile?.full_name ?? user.email ?? null,
+    action: 'stock_adjusted',
+    entity: product ? `${product.name_en}${product.size ? ` (${product.size})` : ''}` : productId,
+    targetTable: 'stock_movements',
+    targetId: productId,
+    // The reason is the point of the record, so it goes in the audit row too
+    // rather than only in the movement it describes.
+    meta: { product_id: productId, quantity, reason }
+  });
+
+  revalidatePath('/stock', 'page');
+  return { ok: true };
 }

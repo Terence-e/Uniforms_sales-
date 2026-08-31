@@ -7,6 +7,7 @@ import {
 } from '@/actions/stock';
 import { listWaitingOrderCounts } from '@/actions/orders';
 import { ProductionForm } from '@/components/forms/production-form';
+import { AdjustStockDialog } from '@/components/forms/adjust-stock-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -106,6 +107,7 @@ export default async function StockPage({ params }: Props) {
                   <TableHead>{t('product')}</TableHead>
                   <TableHead>{t('size')}</TableHead>
                   <TableHead className="text-right">{t('quantity')}</TableHead>
+                  <TableHead className="w-0" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -119,6 +121,17 @@ export default async function StockPage({ params }: Props) {
                       <span className={product.isLow ? 'text-destructive font-medium' : ''}>
                         {product.quantity}
                       </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {/* Opened from the row whose number is wrong, so there is
+                          no product to pick (A-FR-5.5). */}
+                      <AdjustStockDialog
+                        productId={product.id}
+                        productLabel={
+                          product.size ? `${name(product)} — ${product.size}` : name(product)
+                        }
+                        currentQuantity={product.quantity}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

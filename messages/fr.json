@@ -561,6 +561,23 @@
     "size": "Taille",
     "quantity": "Quantité"
   },
+  "Adjustment": {
+    "adjust": "Ajuster",
+    "title": "Ajuster le stock",
+    "direction": "Sens",
+    "add": "Ajouter",
+    "remove": "Retirer",
+    "quantity": "Quantité",
+    "reason": "Motif",
+    "reasonHint": "ex. endommagé en production, comptage physique, défaut, perte",
+    "resulting": "{from} → {to}",
+    "willGoNegative": "passera sous zéro",
+    "ledgerNotice": "Le compte n’est pas écrasé — la différence est enregistrée comme un mouvement, l’écart reste donc visible.",
+    "cancel": "Annuler",
+    "record": "Enregistrer l’ajustement",
+    "recording": "Enregistrement…",
+    "recorded": "Ajustement enregistré pour {product}."
+  },
   "Production": {
     "title": "Enregistrer la production",
     "subtitle": "Saisissez les articles à leur sortie de production. Le stock découle de ces saisies — il n’est jamais saisi directement.",
@@ -594,6 +611,7 @@
     "wholeNumber": "Saisissez un nombre entier.",
     "discountTooLarge": "La remise ne peut d\u00e9passer le sous-total.",
     "invalidDate": "Saisissez une date valide.",
+    "nonZero": "Saisissez une quantité différente de zéro.",
     "describeMore": "Décrivez ce qui s’est passé (au moins 10 caractères).",
     "nothingToPay": "Il n’y a aucun frais à payer.",
     "workRequired": "Décrivez les travaux à effectuer (au moins 3 caractères).",
