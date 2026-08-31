@@ -1,14 +1,39 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
-import { Printer, ArrowLeft } from 'lucide-react';
+import { Printer, ArrowLeft, Copy } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
-import { formatDateTime, formatMoney, SCHOOL } from '@/lib/format';
-import type { PaymentMethod } from '@/types/database.types';
+import { DuplicateStamp } from '@/components/receipt/duplicate-stamp';
+import { formatDate, formatDateTime, formatMoney, SCHOOL } from '@/lib/format';
+import type { OrderStatus, PaymentMethod } from '@/types/database.types';
 
 export type ReceiptData = {
+  /**
+   * 'order' prints the same sheet stamped COMMANDE / ORDER and adds the
+   * expected-ready and measurements rows. The print geometry is shared on
+   * purpose -- one @page rule to check against the real printer, not two.
+   */
+  kind?: 'sale' | 'order';
+  /** Carries `order_no` when kind is 'order'; the label switches with it. */
   receipt_no: string;
+  /**
+   * A reprint, stamped DUPLICATA / DUPLICATE (A-FR-7.12). Set by the route from
+   * the reprint URL, never inferred here -- the sheet renders what it is told.
+   */
+  duplicate?: boolean;
+  /** The sale or order id, so the sheet can link to its own reprint. */
+  record_id: string;
+  /** Orders only. */
+  expected_ready_date?: string | null;
+  measurements?: string | null;
+  /**
+   * The order's derived status, so a REPRINT tells the truth. The stamp used to
+   * be hard-coded "not yet collected", which was safe only while nothing could
+   * reach 'collected'. Now that a line can, a reprinted sheet must not keep
+   * insisting the garment is still in the shop.
+   */
+  order_status?: OrderStatus | null;
   sold_at: string;
   customer_name: string;
   student_name: string | null;
@@ -20,6 +45,14 @@ export type ReceiptData = {
   notes: string | null;
   signature_url: string | null;
   seller_name: string;
+  /**
+   * Both printed, because the spec asks for both (A-FR-6.4, A-FR-6.5) and they
+   * answer different questions. Fall back to the seller for rows written
+   * before the columns existed rather than printing a blank line.
+   */
+  recorded_by_name?: string | null;
+  received_by_name?: string | null;
+  payment_reference?: string | null;
   items: {
     id: string;
     description: string;
@@ -42,6 +75,11 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
   const t = useTranslations('Receipt');
   const tPayment = useTranslations('Sales.payment');
   const locale = useLocale();
+  const isOrder = receipt.kind === 'order';
+  // Where this sheet lives, so the reprint link can point back at itself.
+  const basePath = isOrder
+    ? `/orders/${receipt.record_id}/receipt`
+    : `/sales/${receipt.record_id}/receipt`;
 
   return (
     <>
@@ -66,15 +104,27 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
 
       <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
         <Button asChild variant="ghost" size="sm">
-          <Link href="/sales">
+          <Link href={isOrder ? '/orders' : '/sales'}>
             <ArrowLeft className="size-4" />
-            {t('back')}
+            {isOrder ? t('backToOrders') : t('back')}
           </Link>
         </Button>
-        <Button size="sm" onClick={() => window.print()}>
-          <Printer className="size-4" />
-          {t('print')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Offered only on an original. From a duplicate the link would just
+              reload the same stamped sheet and log another reprint. */}
+          {!receipt.duplicate ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`${basePath}?reprint=1`}>
+                <Copy className="size-4" />
+                {t('reprint')}
+              </Link>
+            </Button>
+          ) : null}
+          <Button size="sm" onClick={() => window.print()}>
+            <Printer className="size-4" />
+            {t('print')}
+          </Button>
+        </div>
       </div>
 
       <article className="receipt-sheet mx-auto max-w-xl rounded-lg border bg-white p-8 text-black shadow-sm">
@@ -88,12 +138,47 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
           {SCHOOL.phone ? (
             <p className="text-xs text-neutral-600">{SCHOOL.phone}</p>
           ) : null}
-          <p className="mt-2 text-sm font-semibold uppercase">{t('title')}</p>
+          {isOrder ? (
+            /* Deliberately bilingual whatever the UI locale: this line is the
+               one thing that must not be misread at the counter, and the parent
+               reading it may not share the language the seller was working in.
+               A-FR-9.3. */
+            <div className="mt-2 border-2 border-black px-3 py-2">
+              <p className="text-base font-bold uppercase tracking-wide">
+                {receipt.order_status === 'cancelled'
+                  ? 'Commande annulée / Order cancelled'
+                  : 'Commande / Order'}
+              </p>
+              <p className="text-[0.7rem] font-semibold uppercase">
+                {/* null means no line was ever outstanding -- every item went
+                    home at the counter -- so it reads as collected, not as
+                    something still owed. */}
+                {receipt.order_status === 'collected' || receipt.order_status == null
+                  ? 'Retiré · Collected'
+                  : receipt.order_status === 'cancelled'
+                    ? 'Remboursée · Refunded'
+                    : 'Pas encore retiré · Not yet collected'}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-2 text-sm font-semibold uppercase">{t('title')}</p>
+          )}
+          {receipt.duplicate ? <DuplicateStamp /> : null}
         </header>
 
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 border-b py-4 text-xs">
-          <Meta label={t('receiptNo')} value={receipt.receipt_no} mono />
+          <Meta
+            label={isOrder ? t('orderNo') : t('receiptNo')}
+            value={receipt.receipt_no}
+            mono
+          />
           <Meta label={t('date')} value={formatDateTime(receipt.sold_at, locale)} />
+          {isOrder && receipt.expected_ready_date ? (
+            <Meta
+              label={t('expectedReady')}
+              value={formatDate(receipt.expected_ready_date, locale)}
+            />
+          ) : null}
           <Meta label={t('customer')} value={receipt.customer_name} />
           {receipt.student_name ? (
             <Meta label={t('student')} value={receipt.student_name} />
@@ -101,7 +186,14 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
           {receipt.class_level ? (
             <Meta label={t('class')} value={receipt.class_level} />
           ) : null}
-          <Meta label={t('servedBy')} value={receipt.seller_name} />
+          <Meta
+            label={t('recordedBy')}
+            value={receipt.recorded_by_name || receipt.seller_name}
+          />
+          <Meta
+            label={t('receivedBy')}
+            value={receipt.received_by_name || receipt.seller_name}
+          />
         </dl>
 
         <table className="w-full border-collapse py-4 text-xs">
@@ -165,7 +257,19 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
         <p className="mt-3 text-xs">
           <span className="text-neutral-600">{t('paymentMethod')}: </span>
           {tPayment(receipt.payment_method)}
+          {/* The transaction ID is what a parent quotes when a mobile payment
+              is disputed, so it belongs on the paper they keep. */}
+          {receipt.payment_reference ? (
+            <span className="font-mono"> · {receipt.payment_reference}</span>
+          ) : null}
         </p>
+
+        {isOrder && receipt.measurements ? (
+          <p className="mt-2 text-xs">
+            <span className="text-neutral-600">{t('measurements')}: </span>
+            {receipt.measurements}
+          </p>
+        ) : null}
 
         {receipt.notes ? (
           <p className="mt-2 text-xs text-neutral-600">{receipt.notes}</p>
@@ -190,7 +294,7 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
         </div>
 
         <footer className="mt-6 border-t pt-3 text-center text-[0.65rem] text-neutral-500">
-          {t('footer')}
+          {isOrder ? t('orderFooter') : t('footer')}
         </footer>
       </article>
     </>

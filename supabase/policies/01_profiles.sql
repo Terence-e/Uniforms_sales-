@@ -15,7 +15,11 @@ create policy "profiles_select_admin"
   using (public.can_oversee());
 
 -- Sellers may edit their own name but never their own role, so the role change
--- is blocked by comparing against the stored value.
+-- is blocked by comparing against the stored value. The stored role is read via
+-- current_user_role() -- a SECURITY DEFINER helper -- NOT an inline subquery on
+-- public.profiles: a subquery against this same table from within its own policy
+-- makes Postgres reject every write with "infinite recursion detected in policy
+-- for relation profiles", which broke profile updates for every user.
 drop policy if exists "profiles_update_self" on public.profiles;
 create policy "profiles_update_self"
   on public.profiles for update
@@ -23,7 +27,7 @@ create policy "profiles_update_self"
   using (id = (select auth.uid()))
   with check (
     id = (select auth.uid())
-    and role = (select p.role from public.profiles p where p.id = (select auth.uid()))
+    and role = public.current_user_role()
   );
 
 -- Managing other people's accounts (role, activation) is super_admin only.

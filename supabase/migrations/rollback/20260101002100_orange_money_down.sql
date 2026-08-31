@@ -1,0 +1,11 @@
+-- Rollback for 20260101002100_orange_money.sql.
+--
+-- MANUAL ONLY -- see supabase/README.md.
+--
+-- Deliberately a no-op. Postgres cannot remove a value from an enum, so
+-- 'orange_money' is permanent once added. Any sale already recorded against it
+-- would also have nowhere to go: rewriting those rows to 'mobile_money' would
+-- state that Orange took money MTN actually took.
+--
+-- If Orange Money must stop being offered, remove it from the selector in the
+-- application. The type keeps the value; nothing new gets filed under it.

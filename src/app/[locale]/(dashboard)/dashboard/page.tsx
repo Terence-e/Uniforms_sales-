@@ -1,9 +1,21 @@
+import {
+  ShoppingCartIcon,
+  BanknoteIcon,
+  BoxesIcon,
+  TriangleAlertIcon,
+  UsersIcon,
+  type LucideIcon
+} from 'lucide-react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import { getProfile } from '@/actions/auth';
+import { getProfile, countActiveUsers } from '@/actions/auth';
+import { getSalesSummary, getMonthlySales, listRecentSales } from '@/actions/sales';
+import { listStock } from '@/actions/stock';
+import { SalesBarChart } from '@/components/dashboard/sales-bar-chart';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatDateTime, formatMoney, toDateInputValue } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import type { UserRole } from '@/types/database.types';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -14,131 +26,201 @@ export async function generateMetadata({ params }: Props) {
   return { title: t('title') };
 }
 
-// Temporary, role-aware preview of the Phase 1 feature areas (spec A-2, A-4..A-12).
-// Each role only sees the modules the requirements grant it; `write`/`read`
-// mirror the RLS predicates (can_operate / can_oversee / is_super_admin). Modules
-// with a real page today link out; the rest are labelled "Planned".
+type TileKey = 'salesMonth' | 'revenueMonth' | 'products' | 'lowStock' | 'users';
 
-type Access = 'write' | 'read';
-type ModuleKey =
-  | 'sales'
-  | 'openJobs'
-  | 'production'
-  | 'returns'
-  | 'cancellations'
-  | 'receipts'
-  | 'catalogue'
-  | 'reports'
-  | 'audit'
-  | 'accounts';
-
-const ORDER: ModuleKey[] = [
-  'sales',
-  'openJobs',
-  'production',
-  'returns',
-  'cancellations',
-  'receipts',
-  'catalogue',
-  'reports',
-  'audit',
-  'accounts'
-];
-
-// Who gets what, and at what access level. Absent = the role never sees it.
-const ACCESS: Record<ModuleKey, Partial<Record<UserRole, Access>>> = {
-  sales: { seller: 'write', administration: 'read', maintenance: 'write', super_admin: 'write' },
-  openJobs: { seller: 'write', administration: 'read', maintenance: 'write', super_admin: 'write' },
-  production: { seller: 'write', administration: 'read', maintenance: 'write', super_admin: 'write' },
-  returns: { seller: 'write', maintenance: 'write', super_admin: 'write' },
-  cancellations: { seller: 'write', maintenance: 'write', super_admin: 'write' },
-  receipts: { seller: 'read', administration: 'read', maintenance: 'read', super_admin: 'read' },
-  catalogue: { seller: 'read', administration: 'read', maintenance: 'read', super_admin: 'write' },
-  reports: { seller: 'read', administration: 'read', maintenance: 'read', super_admin: 'read' },
-  audit: { seller: 'read', administration: 'read', maintenance: 'read', super_admin: 'read' },
-  accounts: { super_admin: 'write' }
-};
-
-// The modules that already have a screen. The rest render as "Planned".
-const HREF: Partial<Record<ModuleKey, string>> = {
-  sales: '/sales',
-  production: '/stock',
-  reports: '/reports'
-};
+// Everyone sees the same headline figures: the sales ledger, catalogue size,
+// low-stock count and team size are shared information. Only the ability to act
+// on them (recording, editing, managing) differs by role, and that is enforced
+// on the pages and in the database, not by hiding the numbers here.
+const TILES: TileKey[] = ['salesMonth', 'revenueMonth', 'products', 'lowStock', 'users'];
 
 export default async function DashboardHome({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [profile, t] = await Promise.all([
-    getProfile(),
-    getTranslations('Dashboard')
-  ]);
+  const today = new Date();
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-  // The layout already redirects anonymous visitors; this satisfies the types.
+  // Cached from the layout's call -- effectively free here.
+  const profile = await getProfile();
   if (!profile) return null;
-
   const role = profile.role as UserRole;
+
+  const [t, summary, monthly, recent, stock, users] = await Promise.all([
+    getTranslations('Dashboard'),
+    getSalesSummary(toDateInputValue(monthStart), toDateInputValue(today)),
+    getMonthlySales(8),
+    listRecentSales(6),
+    listStock(),
+    // Shown to every role now, so always fetched.
+    countActiveUsers()
+  ]);
   const name = profile.full_name || profile.email;
-  const modules = ORDER.filter((key) => ACCESS[key][role]);
+  const lowItems = stock.filter((p) => p.reorderLevel > 0 && p.quantity <= p.reorderLevel);
+  const isReadOnly = role === 'administration';
+
+  const tileDefs: Record<TileKey, { icon: LucideIcon; tone: string; value: string }> = {
+    salesMonth: { icon: ShoppingCartIcon, tone: 'bg-primary/10 text-primary', value: String(summary.count) },
+    revenueMonth: {
+      icon: BanknoteIcon,
+      tone: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+      value: formatMoney(summary.total, locale)
+    },
+    products: {
+      icon: BoxesIcon,
+      tone: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+      value: String(stock.length)
+    },
+    lowStock: {
+      icon: TriangleAlertIcon,
+      tone: 'bg-amber-500/10 text-amber-600 dark:text-amber-500',
+      value: String(lowItems.length)
+    },
+    users: {
+      icon: UsersIcon,
+      tone: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+      value: String(users)
+    }
+  };
+
+  const tiles = TILES;
+  // Everyone now sees the whole team's sales, so the trend is never "yours".
+  const chartTitle = t('overview.salesTrend');
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {t('greeting', { name })}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {t('roleIntro', { role: t(`roles.${role}`) })} — {t(`summary.${role}`)}
-        </p>
-        <p className="text-xs text-muted-foreground/70">{t('previewNote')}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {t('overview.welcome', { name })}
+          </h1>
+          <p className="text-sm text-muted-foreground">{t('overview.subtitle')}</p>
+        </div>
+        {isReadOnly && (
+          <Badge variant="secondary" className="h-6">
+            {t('overview.readOnly')}
+          </Badge>
+        )}
       </div>
 
-      {role === 'administration' && (
-        <div className="rounded-md border border-dashed bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-          {t('readonlyBanner')}
-        </div>
-      )}
-
-      <div>
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-          {t('sectionTitle')}
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {modules.map((key) => {
-            const access = ACCESS[key][role] as Access;
-            const href = HREF[key];
-            return (
-              <Card key={key} className="flex flex-col">
-                <CardHeader className="gap-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-base">
-                      {t(`modules.${key}.title`)}
-                    </CardTitle>
-                    <Badge variant={access === 'write' ? 'secondary' : 'outline'}>
-                      {access === 'write' ? t('accessWrite') : t('accessRead')}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="mt-auto flex items-end justify-between gap-2">
-                  <p className="text-sm text-muted-foreground">
-                    {t(`modules.${key}.desc`)}
+      {/* Stat tiles (role-specific) */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {tiles.map((key) => {
+          const def = tileDefs[key];
+          const Icon = def.icon;
+          return (
+            <Card key={key}>
+              <CardContent className="flex flex-col gap-3 p-5">
+                <div className={cn('flex size-10 items-center justify-center rounded-xl', def.tone)}>
+                  <Icon className="size-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{t(`overview.stat_${key}`)}</p>
+                  <p className="mt-0.5 text-2xl font-semibold tracking-tight tabular-nums">
+                    {def.value}
                   </p>
-                  {href ? (
-                    <Button asChild variant="outline" size="sm" className="shrink-0">
-                      <Link href={href}>{t('open')}</Link>
-                    </Button>
-                  ) : (
-                    <Badge variant="ghost" className="shrink-0">
-                      {t('planned')}
-                    </Badge>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        {/* Sales chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">{chartTitle}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SalesBarChart data={monthly} locale={locale} emptyLabel={t('overview.chartEmpty')} />
+          </CardContent>
+        </Card>
+
+        {/* Low stock alert */}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="text-base">{t('overview.lowStock')}</CardTitle>
+            <Link href="/stock" className="text-sm font-medium text-primary hover:underline">
+              {t('overview.viewAll')}
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {lowItems.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                {t('overview.noLowStock')}
+              </p>
+            ) : (
+              lowItems.slice(0, 5).map((p) => {
+                const productName = locale === 'fr' ? p.name_fr : p.name_en;
+                const ratio = p.reorderLevel > 0 ? Math.min(1, p.quantity / p.reorderLevel) : 0;
+                return (
+                  <div key={p.id} className="rounded-lg border p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {productName}
+                          {p.size ? ` · ${p.size}` : ''}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{p.sku}</p>
+                      </div>
+                      <Badge variant="destructive" className="shrink-0">
+                        {t('overview.stockLabel', { n: p.quantity })}
+                      </Badge>
+                    </div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-destructive"
+                        style={{ width: `${Math.max(6, ratio * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent activity */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="text-base">{t('overview.recentActivity')}</CardTitle>
+          <Link href="/sales" className="text-sm font-medium text-primary hover:underline">
+            {t('overview.viewAll')}
+          </Link>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {recent.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {t('overview.noActivity')}
+            </p>
+          ) : (
+            recent.map((sale) => (
+              <Link
+                key={sale.id}
+                href={`/sales/${sale.id}/receipt`}
+                className="flex items-center justify-between gap-3 rounded-lg border bg-secondary/40 px-4 py-3 transition-colors hover:bg-secondary"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{sale.customer_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDateTime(sale.sold_at, locale)}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <Badge variant="secondary" className="font-mono text-[0.7rem]">
+                    {sale.receipt_no}
+                  </Badge>
+                  <span className="tabular-nums text-sm font-semibold">
+                    {formatMoney(sale.total, locale)}
+                  </span>
+                </div>
+              </Link>
+            ))
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

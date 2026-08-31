@@ -44,6 +44,14 @@ export type ProductOption = {
   size: string | null;
   unit_price: number;
   category: string;
+  /**
+   * What can actually be sold: in stock minus what Ready orders have already
+   * claimed (A-FR-9.10). Optional so the production form, which cares about
+   * neither, can keep passing the same shape.
+   */
+  available?: number;
+  inStock?: number;
+  reserved?: number;
 };
 
 const DEFAULTS: SaleInput = {
@@ -54,11 +62,24 @@ const DEFAULTS: SaleInput = {
   paymentMethod: 'cash',
   items: [{ ...EMPTY_SALE_ITEM }],
   discount: 0,
+  discountReason: null,
   notes: null,
-  signature: null
+  signature: null,
+  recordedBy: null,
+  receivedBy: null,
+  paymentReference: null
 };
 
-export function SaleForm({ products }: { products: ProductOption[] }) {
+export function SaleForm({
+  products,
+  staff,
+  currentUserId
+}: {
+  products: ProductOption[];
+  /** Active staff, for the two attribution selectors (A-FR-6.4, A-FR-6.5). */
+  staff: { id: string; full_name: string }[];
+  currentUserId: string;
+}) {
   const t = useTranslations('Sales');
   const tv = useTranslations('Validation');
   const locale = useLocale();
@@ -68,7 +89,10 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
 
   const form = useForm<SaleInput>({
     resolver: standardSchemaResolver(saleSchema),
-    defaultValues: DEFAULTS,
+    // Both attributions start as whoever is signed in, which is right far more
+    // often than not -- the selectors exist for the shared-till case, not as a
+    // question the seller must answer on every sale.
+    defaultValues: { ...DEFAULTS, recordedBy: currentUserId, receivedBy: currentUserId },
     mode: 'onSubmit'
   });
 
@@ -79,6 +103,10 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
   // keystroke without re-rendering the whole form tree twice.
   const watchedItems = useWatch({ control, name: 'items' });
   const watchedDiscount = useWatch({ control, name: 'discount' });
+  const watchedMethod = useWatch({ control, name: 'paymentMethod' });
+  // Cash has no transaction to reference, so the field would be noise.
+  const needsReference =
+    watchedMethod === 'mobile_money' || watchedMethod === 'orange_money';
 
   const totals = useMemo(() => {
     const lines = (watchedItems ?? []).map((item) => ({
@@ -102,6 +130,8 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
       shouldDirty: true
     });
     setValue(`items.${index}.size`, product.size, { shouldDirty: true });
+    // The catalogue price, shown for confirmation. The server re-reads it
+    // anyway, so this is what the seller sees rather than what they send.
     setValue(`items.${index}.unitPrice`, product.unit_price, {
       shouldDirty: true
     });
@@ -201,6 +231,54 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
               </SelectContent>
             </Select>
           </Field>
+          {needsReference ? (
+            <Field label={t('paymentReference')}>
+              <Input
+                {...register('paymentReference')}
+                placeholder={t('paymentReferenceHint')}
+                inputMode="text"
+              />
+            </Field>
+          ) : null}
+
+          <Field label={t('recordedBy')}>
+            <Select
+              defaultValue={currentUserId}
+              onValueChange={(value) => setValue('recordedBy', value, { shouldDirty: true })}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {staff.map((person) => (
+                  <SelectItem key={person.id} value={person.id}>
+                    {person.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          {/* Separate from "recorded by" on purpose: when the drawer is short
+              at close of day, who keyed the sale is not the question
+              (A-FR-6.5). */}
+          <Field label={t('receivedBy')}>
+            <Select
+              defaultValue={currentUserId}
+              onValueChange={(value) => setValue('receivedBy', value, { shouldDirty: true })}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {staff.map((person) => (
+                  <SelectItem key={person.id} value={person.id}>
+                    {person.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
         </CardContent>
       </Card>
 
@@ -222,6 +300,11 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
         <CardContent className="space-y-4">
           {fields.map((field, index) => {
             const itemErrors = formState.errors.items?.[index];
+            const chosenId = watchedItems?.[index]?.productId;
+            const chosen = chosenId
+              ? products.find((candidate) => candidate.id === chosenId)
+              : undefined;
+            const wanted = Number(watchedItems?.[index]?.quantity) || 0;
             const line =
               (Number(watchedItems?.[index]?.unitPrice) || 0) *
               (Number(watchedItems?.[index]?.quantity) || 0);
@@ -242,20 +325,30 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
                     <SelectContent>
                       {products.map((product) => (
                         <SelectItem key={product.id} value={product.id}>
-                          {productLabel(product)}
+                          <span className="flex w-full items-center justify-between gap-3">
+                            <span>{productLabel(product)}</span>
+                            {/* Availability sits beside the name so the seller
+                                reads it while choosing rather than discovering
+                                it afterwards. */}
+                            {typeof product.available === 'number' ? (
+                              <span
+                                className={
+                                  product.available <= 0
+                                    ? 'text-xs font-medium text-destructive'
+                                    : 'text-xs text-muted-foreground'
+                                }
+                              >
+                                {t('availableShort', { count: product.available })}
+                              </span>
+                            ) : null}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input
-                    {...register(`items.${index}.description`)}
-                    placeholder={t('product')}
-                    className="mt-2"
-                    aria-invalid={Boolean(itemErrors?.description)}
-                  />
-                  {itemErrors?.description ? (
+                  {itemErrors?.productId ? (
                     <p className="mt-1 text-xs text-destructive">
-                      {message(itemErrors.description.message)}
+                      {message(itemErrors.productId.message)}
                     </p>
                   ) : null}
                 </div>
@@ -264,13 +357,17 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
                   <Label className="mb-2 text-xs text-muted-foreground">
                     {t('unitPrice')}
                   </Label>
+                  {/* Read-only, not hidden: the seller must see what they are
+                      charging, but the number comes from the catalogue and is
+                      re-read server-side regardless (A-FR-6.6). Reducing a sale
+                      goes through the discount field, which demands a reason. */}
                   <Input
                     {...register(`items.${index}.unitPrice`)}
                     type="number"
-                    min={0}
-                    step="0.01"
-                    inputMode="decimal"
-                    aria-invalid={Boolean(itemErrors?.unitPrice)}
+                    readOnly
+                    tabIndex={-1}
+                    className="bg-muted/50 text-muted-foreground"
+                    aria-readonly="true"
                   />
                 </div>
 
@@ -286,6 +383,21 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
                     inputMode="numeric"
                     aria-invalid={Boolean(itemErrors?.quantity)}
                   />
+                  {/* Shown, never enforced: selling below stock is allowed with
+                      a warning, an override and an audit row, which is a
+                      separate issue. A hard cap here would have to be undone
+                      there. */}
+                  {chosen && typeof chosen.available === 'number' ? (
+                    <p
+                      className={
+                        wanted > chosen.available
+                          ? 'mt-1 text-xs font-medium text-amber-600 dark:text-amber-500'
+                          : 'mt-1 text-xs text-muted-foreground'
+                      }
+                    >
+                      {t('availableShort', { count: chosen.available })}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="flex items-end justify-between gap-2 sm:col-span-3">
@@ -335,6 +447,22 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
                 aria-invalid={Boolean(formState.errors.discount)}
               />
             </Field>
+
+            {/* Appears only when there is a reduction to explain -- a permanent
+                empty field would be one more thing to skip past on the busiest
+                screen in the system. */}
+            {(Number(watchedDiscount) || 0) > 0 ? (
+              <Field
+                label={t('discountReason')}
+                error={message(formState.errors.discountReason?.message)}
+              >
+                <Input
+                  {...register('discountReason')}
+                  placeholder={t('discountReasonHint')}
+                  aria-invalid={Boolean(formState.errors.discountReason)}
+                />
+              </Field>
+            ) : null}
 
             <Field label={t('notes')}>
               <Input {...register('notes')} />

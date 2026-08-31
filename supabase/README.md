@@ -5,11 +5,11 @@
 - `migrations/` — versioned structural changes. Applied by `supabase db push`.
   These create tables, functions and triggers, and turn **on** row level
   security. They deliberately do not define any policies.
-  Each migration is paired with a `<version>_<name>_down.sql` rollback in the
-  same folder (e.g. `20260101000000_init_down.sql`). The Supabase CLI has no
-  down-migration concept, so these are hand-applied rollbacks — **never run them
-  with `db push`/`db reset`.** See "Rolling back" below for the important
-  version-collision caveat.
+  Each migration is paired with a rollback under `migrations/rollback/`
+  (e.g. `rollback/20260101000000_init_down.sql`). The Supabase CLI reads only the
+  top level of `migrations/`, so the subfolder is ignored by `db push`/`db reset`
+  and cannot collide with its up-migration's version. These are hand-applied
+  rollbacks — see "Rolling back" below.
 - `policies/` — the RLS rules themselves, one file per table group. Every
   statement is `drop policy if exists` + `create policy`, so the whole directory
   can be re-applied at any time. This is the source of truth for access control;
@@ -57,26 +57,19 @@ npm run db:reset      # replays every migration against the local database
 
 ## Rolling back
 
-Each migration has a matching `_down.sql` file in `migrations/`. They are
+Each migration has a matching `_down.sql` under `migrations/rollback/`. They are
 **manual** — apply them by hand (psql or the SQL editor), never with `db push`,
 and always in the reverse of the order they were pushed:
 
 ```
-20260101000200_roles_down.sql   # first
-20260101000100_stock_down.sql
-20260101000000_init_down.sql     # last
+rollback/20260101000200_roles_down.sql   # first
+rollback/20260101000100_stock_down.sql
+rollback/20260101000000_init_down.sql     # last
 ```
 
-> **Caveat — version collision.** A `_down.sql` file shares the numeric version
-> prefix of its up migration (both `20260101000000`), and the Supabase CLI keys
-> migrations by that number. So you cannot rely on `db push`/`db reset` while
-> these live in `migrations/`: the CLI sees a duplicate version and will either
-> reject it or, worse for `db reset`, replay the rollback in sequence and drop
-> objects the next migration needs. If you use the automated CLI workflow,
-> temporarily move the `_down.sql` files out of `migrations/` first, or apply all
-> migrations by hand. (Renaming the down files so they don't start with the
-> timestamp — e.g. `init_down.sql` — makes the CLI ignore them and removes this
-> hazard entirely.)
+> They live in the `rollback/` subfolder on purpose: the CLI globs only the top
+> level of `migrations/`, so a rollback there can share its up-migration's
+> version number without `db push`/`db reset` ever picking it up.
 
 Two more caveats, both spelled out in the files themselves:
 
@@ -91,10 +84,9 @@ Two more caveats, both spelled out in the files themselves:
 
 1. Write a new file in `migrations/` — never edit one that has already been
    pushed to a shared environment.
-2. Write its rollback as `<version>_<name>_down.sql` in `migrations/`. Every
-   migration ships with one; note anything Postgres can't cleanly reverse (enum
-   values, dropped columns) in the file itself, and mind the version-collision
-   caveat above.
+2. Write its rollback as `<version>_<name>_down.sql` under `migrations/rollback/`.
+   Every migration ships with one; note anything Postgres can't cleanly reverse
+   (enum values, dropped columns) in the file itself.
 3. Update the matching file in `policies/` if the change affects access.
 4. Run `npm run db:types` so `Database` in `src/types/database.types.ts` matches
    the real schema. Every Supabase client in this app is typed against it, so a

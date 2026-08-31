@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { logAudit } from '@/lib/audit';
 import {
   computeLineTotal,
   computeTotals,
@@ -45,7 +46,41 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
   if (!user) return { ok: false, error: 'unauthorized' };
 
   const sale = parsed.data;
-  const { subtotal, discount, total } = computeTotals(sale.items, sale.discount);
+
+  /*
+   * Prices are read from the catalogue and the submitted ones are discarded
+   * (A-FR-6.6).
+   *
+   * Validating what the browser sent and rejecting a mismatch would fail an
+   * honest seller for a race they did not cause -- someone edits a price while
+   * the form is open, and the sale bounces. Re-reading instead means the sale
+   * always goes through at the price the catalogue holds right now, and the
+   * database trigger exists purely to stop a direct API call, not to police
+   * this function.
+   */
+  const productIds = sale.items.map((item) => item.productId);
+  const { data: catalogue } = await supabase
+    .from('products')
+    .select('id, unit_price, is_active')
+    .in('id', productIds);
+
+  const priceOf = new Map((catalogue ?? []).map((p) => [p.id, p]));
+
+  for (const item of sale.items) {
+    const product = priceOf.get(item.productId);
+    if (!product) return { ok: false, error: 'unknownProduct' };
+    // An archived product cannot be sold: it was withdrawn for a reason, and
+    // its price may be stale.
+    if (!product.is_active) return { ok: false, error: 'productInactive' };
+  }
+
+  // Rebuilt from catalogue prices, never from the payload.
+  const pricedItems = sale.items.map((item) => ({
+    ...item,
+    unitPrice: priceOf.get(item.productId)!.unit_price
+  }));
+
+  const { subtotal, discount, total } = computeTotals(pricedItems, sale.discount);
 
   const { data: inserted, error: saleError } = await supabase
     .from('sales')
@@ -59,7 +94,18 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
       discount,
       total,
       notes: sale.notes,
+      discount_reason: sale.discount > 0 ? sale.discountReason : null,
       signature_url: sale.signature,
+      payment_reference: sale.paymentReference,
+      // Attribution: who keyed it, who took the money. Defaulted to the
+      // session user when the form leaves them alone.
+      recorded_by: sale.recordedBy ?? user.id,
+      received_by: sale.receivedBy ?? user.id,
+      // Unchanged and unchangeable: the account that actually submitted this
+      // row, and the value the RLS insert policy checks against auth.uid().
+      // The two attribution columns above sit alongside it rather than
+      // replacing it, so a tampered payload still cannot file a sale under
+      // somebody else's name.
       seller_id: user.id
     })
     .select('id, receipt_no')
@@ -70,7 +116,7 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
   }
 
   const { error: itemsError } = await supabase.from('sale_items').insert(
-    sale.items.map((item) => ({
+    pricedItems.map((item) => ({
       sale_id: inserted.id,
       product_id: item.productId,
       description: item.description,
@@ -86,6 +132,51 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
     // A sale with no lines would silently corrupt every report.
     await supabase.from('sales').delete().eq('id', inserted.id);
     return { ok: false, error: itemsError.message };
+  }
+
+  // Audited (A-FR-11.1). Records the receipt, totals and line count -- enough to
+  // reconstruct what was sold without duplicating the whole basket.
+  await logAudit({
+    actorId: user.id,
+    action: 'sale_created',
+    targetTable: 'sales',
+    targetId: inserted.id,
+    newValue: {
+      receipt_no: inserted.receipt_no,
+      customer_name: sale.customerName,
+      subtotal,
+      discount,
+      total,
+      payment_method: sale.paymentMethod,
+      item_count: sale.items.length
+    }
+  });
+
+  // A discount is a reduction someone authorised, so it is recorded as such
+  // (A-FR-6.7). No audit row when there is no discount -- every sale would
+  // otherwise log an event that says nothing.
+  if (discount > 0) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .single();
+
+    await logAudit({
+      actorId: user.id,
+      actorName: profile?.full_name ?? user.email ?? null,
+      action: 'sale_discounted',
+      entity: inserted.receipt_no,
+      targetTable: 'sales',
+      targetId: inserted.id,
+      meta: {
+        receipt_no: inserted.receipt_no,
+        subtotal,
+        discount,
+        total,
+        reason: sale.discountReason
+      }
+    });
   }
 
   revalidatePath('/sales', 'page');
@@ -112,8 +203,11 @@ export async function getSaleWithItems(saleId: string) {
     .from('sales')
     .select(
       `id, receipt_no, sold_at, customer_name, student_name, class_level, phone,
-       payment_method, subtotal, discount, total, notes, signature_url,
+       payment_method, payment_reference, subtotal, discount, total, notes,
+       signature_url,
        seller:profiles!sales_seller_id_fkey ( full_name ),
+       recordedBy:profiles!sales_recorded_by_fkey ( full_name ),
+       receivedBy:profiles!sales_received_by_fkey ( full_name ),
        items:sale_items ( id, description, size, unit_price, quantity, line_total )`
     )
     .eq('id', saleId)
@@ -131,8 +225,7 @@ export type ExportResult =
  * Builds the Excel workbook on the server and hands it back base64-encoded.
  *
  * Server Actions can't stream a file download, so the client turns this into a
- * Blob. RLS still applies to the query, meaning a seller exports only their own
- * sales while an admin gets everything -- no extra check needed here.
+ * Blob. Sales are shared, so every role exports the same full set for the range.
  */
 export async function exportSalesToExcel(
   from: string,
@@ -185,12 +278,22 @@ export async function exportSalesToExcel(
     schoolName: SCHOOL.name
   });
 
+  const total = sales.reduce((sum, sale) => sum + sale.total, 0);
+
+  // Generating an export is audited (A-FR-11.1, B-FR-11.4).
+  await logAudit({
+    actorId: user.id,
+    action: 'export_generated',
+    targetTable: 'sales',
+    newValue: { report: 'sales', from, to, count: sales.length, total }
+  });
+
   return {
     ok: true,
     filename: salesReportFilename(from, to),
     base64: Buffer.from(workbookToUint8Array(workbook)).toString('base64'),
     count: sales.length,
-    total: sales.reduce((sum, sale) => sum + sale.total, 0)
+    total
   };
 }
 
@@ -208,4 +311,39 @@ export async function getSalesSummary(from: string, to: string) {
     count: rows.length,
     total: rows.reduce((sum, row) => sum + row.total, 0)
   };
+}
+
+function monthKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Sales totals per calendar month over the last `months` months (oldest first),
+ * with empty months filled in as zero. Sales are shared, so every role sees the
+ * whole team's totals.
+ */
+export async function getMonthlySales(months = 8) {
+  const supabase = await createClient();
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+
+  const { data } = await supabase
+    .from('sales')
+    .select('sold_at, total')
+    .gte('sold_at', start.toISOString());
+
+  const buckets = new Map<string, { total: number; count: number }>();
+  for (let i = 0; i < months; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+    buckets.set(monthKey(d), { total: 0, count: 0 });
+  }
+  for (const row of data ?? []) {
+    const bucket = buckets.get(monthKey(new Date(row.sold_at)));
+    if (bucket) {
+      bucket.total += row.total;
+      bucket.count += 1;
+    }
+  }
+
+  return Array.from(buckets, ([key, v]) => ({ key, total: v.total, count: v.count }));
 }
