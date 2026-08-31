@@ -308,6 +308,7 @@
     "selectProduct": "Select a product",
     "size": "Size",
     "unitPrice": "Unit price",
+    "availableShort": "{count} available",
     "quantity": "Qty",
     "lineTotal": "Total",
     "subtotal": "Subtotal",
@@ -556,6 +557,9 @@
   },
   "Stock": {
     "title": "Production & stock",
+    "inStock": "In stock",
+    "reserved": "Reserved",
+    "available": "Available",
     "onHand": "On hand",
     "product": "Product",
     "size": "Size",

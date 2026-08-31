@@ -106,7 +106,9 @@ export default async function StockPage({ params }: Props) {
                 <TableRow>
                   <TableHead>{t('product')}</TableHead>
                   <TableHead>{t('size')}</TableHead>
-                  <TableHead className="text-right">{t('quantity')}</TableHead>
+                  <TableHead className="text-right">{t('inStock')}</TableHead>
+                  <TableHead className="text-right">{t('reserved')}</TableHead>
+                  <TableHead className="text-right">{t('available')}</TableHead>
                   <TableHead className="w-0" />
                 </TableRow>
               </TableHeader>
@@ -120,6 +122,20 @@ export default async function StockPage({ params }: Props) {
                     <TableCell className="text-right tabular-nums">
                       <span className={product.isLow ? 'text-destructive font-medium' : ''}>
                         {product.quantity}
+                      </span>
+                    </TableCell>
+                    {/* Reserved is dimmed at zero: nothing is spoken for, so
+                        there is nothing to think about. */}
+                    <TableCell className="text-right tabular-nums">
+                      <span className={product.reserved > 0 ? '' : 'text-muted-foreground'}>
+                        {product.reserved}
+                      </span>
+                    </TableCell>
+                    {/* Available is the number that decides whether a walk-in
+                        can be served, so it carries the weight (A-FR-9.10). */}
+                    <TableCell className="text-right tabular-nums font-medium">
+                      <span className={product.available <= 0 ? 'text-destructive' : ''}>
+                        {product.available}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">

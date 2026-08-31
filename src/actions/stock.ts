@@ -35,14 +35,61 @@ export async function listStock() {
     .order('category')
     .order('name_en');
 
+  const reserved = await reservedByProduct();
+
   return (data ?? []).map((product) => {
     // stock_levels is one row per product, but PostgREST embeds it as an array
     // because the foreign key lives on the stock_levels side.
     const level = Array.isArray(product.level) ? product.level[0] : product.level;
     const quantity = level?.quantity ?? 0;
     const reorderLevel = level?.reorder_level ?? 0;
-    return { ...product, quantity, reorderLevel, isLow: quantity <= reorderLevel };
+    const reservedQty = reserved[product.id] ?? 0;
+    return {
+      ...product,
+      quantity,
+      reorderLevel,
+      // Derived, never stored: a second copy of this number would drift the
+      // moment an order moved to Ready without the copy being updated.
+      reserved: reservedQty,
+      // May go negative, and is shown that way. Hiding it would conceal the
+      // oversell it exists to reveal (A-FR-9.10).
+      available: quantity - reservedQty,
+      isLow: quantity <= reorderLevel
+    };
   });
+}
+
+/**
+ * How many of each product are spoken for (A-FR-9.9).
+ *
+ * Reserved means order lines that have reached 'ready' -- and only those. A
+ * garment still 'ordered' or 'in_production' does not physically exist yet, so
+ * it cannot be reserved out of stock you are holding. Once it is Ready it does
+ * exist, sitting on the shelf with someone's name on it, and that is precisely
+ * the shirt that must not be sold to a walk-in customer.
+ *
+ * That makes this the exact complement of listWaitingOrderCounts(), which
+ * covers 'ordered' and 'in_production': together they account for every open
+ * line, with no overlap and no gap.
+ *
+ * Sums line QUANTITIES, not line counts -- two Ready lines of three shirts
+ * reserve six. Lines with no product_id are free text and cannot be attributed,
+ * so this is a floor rather than a total.
+ */
+export async function reservedByProduct(): Promise<Record<string, number>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('order_items')
+    .select('product_id, quantity')
+    .eq('status', 'ready')
+    .not('product_id', 'is', null);
+
+  const reserved: Record<string, number> = {};
+  for (const line of data ?? []) {
+    if (!line.product_id) continue;
+    reserved[line.product_id] = (reserved[line.product_id] ?? 0) + line.quantity;
+  }
+  return reserved;
 }
 
 export type StockMovementResult =
@@ -128,15 +175,42 @@ export async function deductStockForSale(
 }
 
 /** Catalogue rows for the sale form's product picker. */
+/**
+ * Products for the sale and production selectors, carrying what is actually
+ * available to sell (A-FR-9.10).
+ *
+ * The sale screen works from Available rather than In stock, because a Ready
+ * order line is a garment already promised to a named parent. Selling it to
+ * whoever is at the counter is the double-sale this whole feature exists to
+ * prevent.
+ *
+ * Shown, not enforced: below-stock sales are permitted with a warning, an
+ * override and an audit row, which is its own issue. Blocking here would have
+ * to be undone there.
+ */
 export async function listProducts() {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from('products')
-    .select('id, sku, name_en, name_fr, size, unit_price, category')
-    .eq('is_active', true)
-    .order('category')
-    .order('name_en');
-  return data ?? [];
+  const [{ data }, reserved] = await Promise.all([
+    supabase
+      .from('products')
+      .select('id, sku, name_en, name_fr, size, unit_price, category, level:stock_levels ( quantity )')
+      .eq('is_active', true)
+      .order('category')
+      .order('name_en'),
+    reservedByProduct()
+  ]);
+
+  return (data ?? []).map((product) => {
+    const level = Array.isArray(product.level) ? product.level[0] : product.level;
+    const quantity = level?.quantity ?? 0;
+    const reservedQty = reserved[product.id] ?? 0;
+    return {
+      ...product,
+      inStock: quantity,
+      reserved: reservedQty,
+      available: quantity - reservedQty
+    };
+  });
 }
 
 // ------------------------------------------------------------- production
