@@ -14,7 +14,6 @@
     "toggleTheme": "Toggle theme",
     "menu": "Menu",
     "searchPlaceholder": "Search sales, receipts, products…",
-    "searchHint": "Search is coming soon.",
     "notifications": "Notifications",
     "notificationsEmpty": "You're all caught up.",
     "sections": {
@@ -287,6 +286,32 @@
     "unexpectedError": "Something went wrong. Please try again.",
     "tooManyAttempts": "Too many failed attempts. Try again in a few minutes.",
     "sessionExpired": "Your session expired. Please sign in again."
+  },
+  "Search": {
+    "title": "Search",
+    "subtitle": "Find a sale, order or alteration by reference, student, parent or phone.",
+    "label": "Search",
+    "placeholder": "Reference, student, parent or phone…",
+    "search": "Search",
+    "from": "From",
+    "to": "To",
+    "anyStage": "Any status",
+    "open": "Open",
+    "kind": {
+      "sale": "Sales",
+      "order": "Orders",
+      "alteration": "Alterations"
+    },
+    "stage": {
+      "waiting": "Waiting",
+      "in_progress": "In progress",
+      "ready": "Ready"
+    },
+    "resultCount": "{count} result(s)",
+    "noResults": "Nothing matched that search.",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {page} of {pages}"
   },
   "Sales": {
     "title": "New sale",

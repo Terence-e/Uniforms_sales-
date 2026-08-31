@@ -797,6 +797,30 @@ export type Database = {
       next_receipt_no: { Args: Record<string, never>; Returns: string };
       count_active_users: { Args: Record<string, never>; Returns: number };
       next_reference: { Args: { p_prefix: string }; Returns: string };
+      search_transactions: {
+        Args: {
+          p_term: string | null;
+          p_kinds?: string[] | null;
+          p_stage?: string | null;
+          p_from?: string | null;
+          p_to?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          kind: string;
+          id: string;
+          reference: string;
+          occurred_at: string;
+          customer_name: string;
+          student_name: string | null;
+          phone: string | null;
+          status: string | null;
+          amount: number;
+          match_rank: number;
+          total_count: number;
+        }[];
+      };
       order_status_rank: { Args: { s: OrderStatus }; Returns: number };
       alteration_status_rank: { Args: { s: AlterationStatus }; Returns: number };
       collect_order_lines: {

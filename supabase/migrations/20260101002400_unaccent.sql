@@ -1,0 +1,13 @@
+-- Accent-insensitive matching for the unified search (A-FR-7.6).
+--
+-- The two searches that actually fail at this counter are accents and partial
+-- names: a parent typed as "Thérèse" is looked up as "therese", and "Ateba"
+-- should find "Jean Ateba". unaccent plus ILIKE covers both, predictably.
+--
+-- pg_trgm was the alternative. It adds typo tolerance and similarity ranking,
+-- but brings a threshold that has to be tuned and produces matches nobody
+-- asked for -- a knob whose right value nobody at the shop could know.
+--
+-- Installed into the extensions schema rather than public, which is where
+-- Supabase keeps them and keeps public for this project's own objects.
+create extension if not exists unaccent with schema extensions;

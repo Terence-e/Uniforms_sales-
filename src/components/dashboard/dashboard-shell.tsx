@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { MenuIcon, XIcon, LogOutIcon, SearchIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { toast } from 'sonner';
-import { Link, usePathname } from '@/i18n/navigation';
+import { Link, usePathname, useRouter } from '@/i18n/navigation';
 import { signOut } from '@/actions/auth';
 import { SchoolLogo } from '@/components/brand/school-logo';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -48,6 +47,7 @@ export function DashboardShell({
 }) {
   const t = useTranslations('Nav');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const router = useRouter();
   const items = navItemsFor(role);
 
   return (
@@ -98,10 +98,15 @@ export function DashboardShell({
             <SchoolLogo size="sm" />
           </div>
 
+          {/* The box was a placeholder that only raised a toast; it now goes
+              to the real search (A-FR-7.6). Present on every screen, because a
+              parent can turn up at the counter mid-anything. */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              toast.info(t('searchHint'));
+              const q = new FormData(e.currentTarget).get('q');
+              const term = typeof q === 'string' ? q.trim() : '';
+              router.push(term ? `/search?q=${encodeURIComponent(term)}` : '/search');
             }}
             className="relative hidden max-w-xl flex-1 md:block"
           >
