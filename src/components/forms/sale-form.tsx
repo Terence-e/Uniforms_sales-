@@ -44,6 +44,14 @@ export type ProductOption = {
   size: string | null;
   unit_price: number;
   category: string;
+  /**
+   * What can actually be sold: in stock minus what Ready orders have already
+   * claimed (A-FR-9.10). Optional so the production form, which cares about
+   * neither, can keep passing the same shape.
+   */
+  available?: number;
+  inStock?: number;
+  reserved?: number;
 };
 
 const DEFAULTS: SaleInput = {
@@ -222,6 +230,11 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
         <CardContent className="space-y-4">
           {fields.map((field, index) => {
             const itemErrors = formState.errors.items?.[index];
+            const chosenId = watchedItems?.[index]?.productId;
+            const chosen = chosenId
+              ? products.find((candidate) => candidate.id === chosenId)
+              : undefined;
+            const wanted = Number(watchedItems?.[index]?.quantity) || 0;
             const line =
               (Number(watchedItems?.[index]?.unitPrice) || 0) *
               (Number(watchedItems?.[index]?.quantity) || 0);
@@ -242,7 +255,23 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
                     <SelectContent>
                       {products.map((product) => (
                         <SelectItem key={product.id} value={product.id}>
-                          {productLabel(product)}
+                          <span className="flex w-full items-center justify-between gap-3">
+                            <span>{productLabel(product)}</span>
+                            {/* Availability sits beside the name so the seller
+                                reads it while choosing rather than discovering
+                                it afterwards. */}
+                            {typeof product.available === 'number' ? (
+                              <span
+                                className={
+                                  product.available <= 0
+                                    ? 'text-xs font-medium text-destructive'
+                                    : 'text-xs text-muted-foreground'
+                                }
+                              >
+                                {t('availableShort', { count: product.available })}
+                              </span>
+                            ) : null}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -286,6 +315,21 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
                     inputMode="numeric"
                     aria-invalid={Boolean(itemErrors?.quantity)}
                   />
+                  {/* Shown, never enforced: selling below stock is allowed with
+                      a warning, an override and an audit row, which is a
+                      separate issue. A hard cap here would have to be undone
+                      there. */}
+                  {chosen && typeof chosen.available === 'number' ? (
+                    <p
+                      className={
+                        wanted > chosen.available
+                          ? 'mt-1 text-xs font-medium text-amber-600 dark:text-amber-500'
+                          : 'mt-1 text-xs text-muted-foreground'
+                      }
+                    >
+                      {t('availableShort', { count: chosen.available })}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="flex items-end justify-between gap-2 sm:col-span-3">
