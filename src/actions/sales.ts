@@ -3,7 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { logAudit } from '@/lib/audit';
+import { reservedByProduct } from '@/actions/stock';
 import {
+  computeLineTotal,
   computeTotals,
   saleSchema,
   type SaleInput
@@ -16,8 +18,21 @@ import {
 } from '@/lib/excel-export';
 import { CURRENCY, SCHOOL } from '@/lib/format';
 
+/** One line asking for more than the shelf is believed to hold. */
+export type Shortfall = {
+  description: string;
+  requested: number;
+  available: number;
+};
+
 export type CreateSaleResult =
   | { ok: true; saleId: string; receiptNo: string }
+  /**
+   * Not an error so much as a question. The sale is refused only until the
+   * seller answers it -- resubmitting with belowStockAck completes the same
+   * sale and records the override.
+   */
+  | { ok: false; error: 'belowStock'; shortfalls: Shortfall[] }
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
 /**
@@ -45,35 +60,137 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
   if (!user) return { ok: false, error: 'unauthorized' };
 
   const sale = parsed.data;
-  const { subtotal, discount, total } = computeTotals(sale.items, sale.discount);
 
-  // One transaction: the header, the lines, and the SAL-YYYY-NNNN draw all
-  // happen inside record_sale(). A failure rolls the reference back too, so the
-  // sequence never gains a gap -- unlike the old header-then-items pair, where a
-  // failed second call left a burned number and a deleted row (a false "a
-  // document was concealed" signal). Totals are recomputed inside the function.
+  /*
+   * Prices are read from the catalogue and the submitted ones are discarded
+   * (A-FR-6.6).
+   *
+   * Validating what the browser sent and rejecting a mismatch would fail an
+   * honest seller for a race they did not cause -- someone edits a price while
+   * the form is open, and the sale bounces. Re-reading instead means the sale
+   * always goes through at the price the catalogue holds right now, and the
+   * database trigger exists purely to stop a direct API call, not to police
+   * this function.
+   */
+  const productIds = sale.items.map((item) => item.productId);
+  const { data: catalogue } = await supabase
+    .from('products')
+    .select('id, unit_price, is_active')
+    .in('id', productIds);
+
+  const priceOf = new Map((catalogue ?? []).map((p) => [p.id, p]));
+
+  for (const item of sale.items) {
+    const product = priceOf.get(item.productId);
+    if (!product) return { ok: false, error: 'unknownProduct' };
+    // An archived product cannot be sold: it was withdrawn for a reason, and
+    // its price may be stale.
+    if (!product.is_active) return { ok: false, error: 'productInactive' };
+  }
+
+  // Rebuilt from catalogue prices, never from the payload.
+  const pricedItems = sale.items.map((item) => ({
+    ...item,
+    unitPrice: priceOf.get(item.productId)!.unit_price
+  }));
+
+  /*
+   * Availability is recomputed here, never taken from the payload (A-FR-5.6).
+   *
+   * The browser's figure was right when the page loaded, but somebody may have
+   * moved an order to Ready since. Trusting it would mean a stale number
+   * silently skips both the warning and the audit row -- and a missing audit
+   * row is the failure nobody ever notices.
+   */
+  const [{ data: levels }, reserved] = await Promise.all([
+    supabase.from('stock_levels').select('product_id, quantity').in('product_id', productIds),
+    reservedByProduct()
+  ]);
+
+  const inStock = new Map((levels ?? []).map((l) => [l.product_id, l.quantity]));
+
+  // Summed per product first: three lines of the same shirt draw on one shelf,
+  // and checking each line alone would pass all three against the same stock.
+  const wantedPerProduct = new Map<string, number>();
+  for (const item of sale.items) {
+    wantedPerProduct.set(
+      item.productId,
+      (wantedPerProduct.get(item.productId) ?? 0) + item.quantity
+    );
+  }
+
+  const shortfalls: Shortfall[] = [];
+  for (const [productId, wanted] of wantedPerProduct) {
+    const available = (inStock.get(productId) ?? 0) - (reserved[productId] ?? 0);
+    if (wanted > available) {
+      const line = sale.items.find((item) => item.productId === productId);
+      shortfalls.push({
+        description: line?.description ?? productId,
+        requested: wanted,
+        available
+      });
+    }
+  }
+
+  // Warns, never blocks: the seller is standing in front of the shelf, and if a
+  // garment was finished but not yet entered the shelf is right and the system
+  // is wrong. Refusing outright would push the shop back to paper.
+  if (shortfalls.length > 0 && !sale.belowStockAck) {
+    return { ok: false, error: 'belowStock', shortfalls };
+  }
+
+  const { subtotal, discount, total } = computeTotals(pricedItems, sale.discount);
+
   const { data: inserted, error: saleError } = await supabase
-    .rpc('record_sale', {
-      p_customer_name: sale.customerName,
-      p_student_name: sale.studentName,
-      p_class_level: sale.classLevel,
-      p_phone: sale.phone,
-      p_payment_method: sale.paymentMethod,
-      p_discount: discount,
-      p_notes: sale.notes,
-      p_signature_url: sale.signature,
-      p_items: sale.items.map((item) => ({
-        product_id: item.productId,
-        description: item.description,
-        size: item.size,
-        unit_price: item.unitPrice,
-        quantity: item.quantity
-      }))
+    .from('sales')
+    .insert({
+      customer_name: sale.customerName,
+      student_name: sale.studentName,
+      class_level: sale.classLevel,
+      phone: sale.phone,
+      payment_method: sale.paymentMethod,
+      subtotal,
+      discount,
+      total,
+      notes: sale.notes,
+      discount_reason: sale.discount > 0 ? sale.discountReason : null,
+      signature_url: sale.signature,
+      payment_reference: sale.paymentReference,
+      // Attribution: who keyed it, who took the money. Defaulted to the
+      // session user when the form leaves them alone.
+      recorded_by: sale.recordedBy ?? user.id,
+      received_by: sale.receivedBy ?? user.id,
+      // Unchanged and unchangeable: the account that actually submitted this
+      // row, and the value the RLS insert policy checks against auth.uid().
+      // The two attribution columns above sit alongside it rather than
+      // replacing it, so a tampered payload still cannot file a sale under
+      // somebody else's name.
+      seller_id: user.id
     })
+    .select('id, receipt_no')
     .single();
 
   if (saleError || !inserted) {
     return { ok: false, error: saleError?.message ?? 'insertFailed' };
+  }
+
+  const { error: itemsError } = await supabase.from('sale_items').insert(
+    pricedItems.map((item) => ({
+      sale_id: inserted.id,
+      product_id: item.productId,
+      description: item.description,
+      size: item.size,
+      unit_price: item.unitPrice,
+      quantity: item.quantity,
+      line_total: computeLineTotal(item)
+    }))
+  );
+
+  if (itemsError) {
+    // Postgres has no transaction across two PostgREST calls, so undo by hand.
+    // A sale with no lines would silently corrupt every report.
+    await supabase.from('sales').delete().eq('id', inserted.id);
+    return { ok: false, error: itemsError.message };
   }
 
   // Audited (A-FR-11.1). Records the receipt, totals and line count -- enough to
@@ -93,6 +210,59 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
       item_count: sale.items.length
     }
   });
+
+  /*
+   * One row per sale, not per line: a three-line sale with two shortfalls is
+   * one decision the seller made once.
+   *
+   * Recorded as "sold beyond available", which is what actually happened.
+   * Sales do not deduct stock yet, so no balance went negative -- calling it a
+   * negative-stock event would state something untrue of the ledger today.
+   */
+  if (shortfalls.length > 0) {
+    const { data: overrider } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .single();
+
+    await logAudit({
+      actorId: user.id,
+      actorName: overrider?.full_name ?? user.email ?? null,
+      action: 'sale_below_stock_override',
+      entity: inserted.receipt_no,
+      targetTable: 'sales',
+      targetId: inserted.id,
+      meta: { receipt_no: inserted.receipt_no, shortfalls }
+    });
+  }
+
+  // A discount is a reduction someone authorised, so it is recorded as such
+  // (A-FR-6.7). No audit row when there is no discount -- every sale would
+  // otherwise log an event that says nothing.
+  if (discount > 0) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .single();
+
+    await logAudit({
+      actorId: user.id,
+      actorName: profile?.full_name ?? user.email ?? null,
+      action: 'sale_discounted',
+      entity: inserted.receipt_no,
+      targetTable: 'sales',
+      targetId: inserted.id,
+      meta: {
+        receipt_no: inserted.receipt_no,
+        subtotal,
+        discount,
+        total,
+        reason: sale.discountReason
+      }
+    });
+  }
 
   revalidatePath('/sales', 'page');
   return { ok: true, saleId: inserted.id, receiptNo: inserted.receipt_no };
@@ -118,8 +288,11 @@ export async function getSaleWithItems(saleId: string) {
     .from('sales')
     .select(
       `id, receipt_no, sold_at, customer_name, student_name, class_level, phone,
-       payment_method, subtotal, discount, total, notes, signature_url,
+       payment_method, payment_reference, subtotal, discount, total, notes,
+       signature_url,
        seller:profiles!sales_seller_id_fkey ( full_name ),
+       recordedBy:profiles!sales_recorded_by_fkey ( full_name ),
+       receivedBy:profiles!sales_received_by_fkey ( full_name ),
        items:sale_items ( id, description, size, unit_price, quantity, line_total )`
     )
     .eq('id', saleId)

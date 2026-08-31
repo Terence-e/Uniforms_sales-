@@ -1,3 +1,4 @@
+import { isReprintRequest, logReprint } from '@/actions/reprints';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getCollection } from '@/actions/orders';
@@ -6,7 +7,11 @@ import {
   type CollectionSlipData
 } from '@/components/receipt/collection-slip';
 
-type Props = { params: Promise<{ locale: string; id: string }> };
+type Props = {
+  params: Promise<{ locale: string; id: string }>;
+  /** `?reprint=1` marks the sheet DUPLICATA / DUPLICATE and logs it. */
+  searchParams: Promise<{ reprint?: string }>;
+};
 
 export async function generateMetadata({ params }: Props) {
   const { locale, id } = await params;
@@ -15,7 +20,7 @@ export async function generateMetadata({ params }: Props) {
   return { title: collection ? `${t('title')} ${collection.col_no}` : t('title') };
 }
 
-export default async function CollectionSlipPage({ params }: Props) {
+export default async function CollectionSlipPage({ params, searchParams }: Props) {
   const { locale, id } = await params;
   setRequestLocale(locale);
 
@@ -24,7 +29,16 @@ export default async function CollectionSlipPage({ params }: Props) {
   const collection = await getCollection(id);
   if (!collection || !collection.order) notFound();
 
+
+  // A reprint is stamped and recorded; the plain URL stays the original
+  // (A-FR-7.12).
+  const duplicate = await isReprintRequest(searchParams);
+  if (duplicate) {
+    await logReprint({ kind: 'collection', id: collection.id, reference: collection.col_no });
+  }
   const slip: CollectionSlipData = {
+    duplicate,
+    id: collection.id,
     col_no: collection.col_no,
     collected_at: collection.collected_at,
     collector_name: collection.collector_name,

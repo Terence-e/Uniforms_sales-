@@ -1,4 +1,4 @@
--- Rollback of 20260101000800_audit_log_expand.sql. Manual (see the header in
+-- Rollback of 20260101001500_audit_log_expand.sql. Manual (see the header in
 -- rollback/20260101000000_init_down.sql).
 
 drop trigger if exists audit_log_no_update on public.audit_log;

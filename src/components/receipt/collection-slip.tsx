@@ -1,12 +1,17 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
-import { Printer, ArrowLeft } from 'lucide-react';
+import { Printer, ArrowLeft, Copy } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
+import { DuplicateStamp } from '@/components/receipt/duplicate-stamp';
 import { formatDateTime, formatMoney, SCHOOL } from '@/lib/format';
 
 export type CollectionSlipData = {
+  /** A reprint, stamped DUPLICATA / DUPLICATE (A-FR-7.12). */
+  duplicate?: boolean;
+  /** The collection's own id, so the slip can link to its own reprint. */
+  id: string;
   col_no: string;
   collected_at: string;
   collector_name: string;
@@ -41,6 +46,7 @@ export type CollectionSlipData = {
  */
 export function CollectionSlip({ slip }: { slip: CollectionSlipData }) {
   const t = useTranslations('Collection');
+  const tReceipt = useTranslations('Receipt');
   const locale = useLocale();
 
   return (
@@ -70,10 +76,20 @@ export function CollectionSlip({ slip }: { slip: CollectionSlipData }) {
             {t('backToOrder')}
           </Link>
         </Button>
-        <Button size="sm" onClick={() => window.print()}>
-          <Printer className="size-4" />
-          {t('print')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {!slip.duplicate ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/collections/${slip.id}?reprint=1`}>
+                <Copy className="size-4" />
+                {tReceipt('reprint')}
+              </Link>
+            </Button>
+          ) : null}
+          <Button size="sm" onClick={() => window.print()}>
+            <Printer className="size-4" />
+            {t('print')}
+          </Button>
+        </div>
       </div>
 
       <article className="receipt-sheet mx-auto max-w-xl rounded-lg border bg-white p-8 text-black shadow-sm">
@@ -91,6 +107,7 @@ export function CollectionSlip({ slip }: { slip: CollectionSlipData }) {
               Retiré / Collected
             </p>
           </div>
+          {slip.duplicate ? <DuplicateStamp /> : null}
         </header>
 
         {/* The two references, side by side and equally weighted. */}

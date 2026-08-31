@@ -1,9 +1,14 @@
+import { isReprintRequest, logReprint } from '@/actions/reprints';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getSaleWithItems } from '@/actions/sales';
 import { ReceiptPrint, type ReceiptData } from '@/components/receipt/receipt-print';
 
-type Props = { params: Promise<{ locale: string; id: string }> };
+type Props = {
+  params: Promise<{ locale: string; id: string }>;
+  /** `?reprint=1` marks the sheet DUPLICATA / DUPLICATE and logs it. */
+  searchParams: Promise<{ reprint?: string }>;
+};
 
 export async function generateMetadata({ params }: Props) {
   const { locale, id } = await params;
@@ -12,7 +17,7 @@ export async function generateMetadata({ params }: Props) {
   return { title: sale ? `${t('title')} ${sale.receipt_no}` : t('title') };
 }
 
-export default async function ReceiptPage({ params }: Props) {
+export default async function ReceiptPage({ params, searchParams }: Props) {
   const { locale, id } = await params;
   setRequestLocale(locale);
 
@@ -21,7 +26,16 @@ export default async function ReceiptPage({ params }: Props) {
   const sale = await getSaleWithItems(id);
   if (!sale) notFound();
 
+
+  // A reprint is stamped and recorded; the plain URL stays the original
+  // (A-FR-7.12).
+  const duplicate = await isReprintRequest(searchParams);
+  if (duplicate) {
+    await logReprint({ kind: 'sale', id: sale.id, reference: sale.receipt_no });
+  }
   const receipt: ReceiptData = {
+    duplicate,
+    record_id: sale.id,
     receipt_no: sale.receipt_no,
     sold_at: sale.sold_at,
     customer_name: sale.customer_name,
@@ -34,6 +48,9 @@ export default async function ReceiptPage({ params }: Props) {
     notes: sale.notes,
     signature_url: sale.signature_url,
     seller_name: sale.seller?.full_name ?? '',
+    recorded_by_name: sale.recordedBy?.full_name ?? null,
+    received_by_name: sale.receivedBy?.full_name ?? null,
+    payment_reference: sale.payment_reference,
     items: sale.items ?? []
   };
 

@@ -111,6 +111,7 @@ export function NotificationBell() {
                 <p className="text-sm font-semibold">{t('title')}</p>
                 {unread > 0 && (
                   <button
+                    suppressHydrationWarning
                     onClick={onMarkAllRead}
                     className="text-xs font-medium text-primary hover:underline"
                   >
@@ -130,6 +131,7 @@ export function NotificationBell() {
                     const { title, body } = text(n);
                     return (
                       <button
+                        suppressHydrationWarning
                         key={n.id}
                         onClick={() => openItem(n)}
                         className={cn(

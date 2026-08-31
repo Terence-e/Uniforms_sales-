@@ -345,3 +345,53 @@ export async function listStaff() {
     .order('full_name');
   return data ?? [];
 }
+
+// ------------------------------------------------- waiting orders (A-FR-9.11)
+
+export type WaitingCount = { orders: number; units: number };
+
+/**
+ * How many outstanding order lines are waiting on each product, so production
+ * entry can say "3 orders waiting for this size" and those garments get set
+ * aside against orders rather than put on the shelf (A-FR-9.11).
+ *
+ * "Waiting" means a line still to be MADE: 'ordered' or 'in_production'. A
+ * 'ready' line is deliberately excluded -- the garment already exists and is
+ * already set aside, so counting it would tell the tailor to put a second one
+ * aside for an order that is satisfied. 'collected' and 'cancelled' are gone.
+ *
+ * Lines with no product_id are free text -- a size the catalogue does not carry,
+ * often exactly why the parent ordered rather than bought -- and cannot be
+ * matched to a product. They are invisible here, which makes every count a
+ * floor rather than a total.
+ *
+ * Aggregated in JS rather than SQL because PostgREST has no GROUP BY, and the
+ * outstanding set for a school uniform shop is small. If it ever isn't, this
+ * becomes a view.
+ */
+export async function listWaitingOrderCounts(): Promise<Record<string, WaitingCount>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('order_items')
+    .select('product_id, quantity, order_id')
+    .in('status', ['ordered', 'in_production'])
+    .not('product_id', 'is', null);
+
+  const byProduct: Record<string, { orders: Set<string>; units: number }> = {};
+
+  for (const line of data ?? []) {
+    if (!line.product_id) continue;
+    const entry = (byProduct[line.product_id] ??= { orders: new Set(), units: 0 });
+    // A single order can hold several lines of the same product; the order is
+    // still one order, while the garments add up.
+    entry.orders.add(line.order_id);
+    entry.units += line.quantity;
+  }
+
+  return Object.fromEntries(
+    Object.entries(byProduct).map(([productId, entry]) => [
+      productId,
+      { orders: entry.orders.size, units: entry.units }
+    ])
+  );
+}

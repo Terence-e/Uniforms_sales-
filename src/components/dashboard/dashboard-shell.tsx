@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { MenuIcon, XIcon, LogOutIcon, SearchIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { toast } from 'sonner';
-import { Link, usePathname } from '@/i18n/navigation';
+import { Link, usePathname, useRouter } from '@/i18n/navigation';
 import { signOut } from '@/actions/auth';
 import { SchoolLogo } from '@/components/brand/school-logo';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { NotificationBell } from '@/components/dashboard/notification-bell';
+import { ReportProblemDialog } from '@/components/bug-report/report-problem-dialog';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,23 +32,29 @@ export function DashboardShell({
   userName,
   roleLabel,
   avatarUrl,
+  openJobCount,
   children
 }: {
   role: UserRole;
   userName: string;
   roleLabel: string;
   avatarUrl?: string | null;
+  /** Open orders and alterations, badged on the nav from every screen
+   *  (A-FR-9.21). Undefined when it could not be read -- the badge is then
+   *  omitted rather than showing a wrong or zero count. */
+  openJobCount?: number;
   children: React.ReactNode;
 }) {
   const t = useTranslations('Nav');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const router = useRouter();
   const items = navItemsFor(role);
 
   return (
     <div className="flex min-h-dvh bg-background">
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r bg-sidebar lg:flex">
-        <SidebarContent items={items} />
+        <SidebarContent items={items} openJobCount={openJobCount} />
       </aside>
 
       {/* Mobile drawer */}
@@ -65,7 +71,12 @@ export function DashboardShell({
                 <XIcon className="size-5" />
               </Button>
             </div>
-            <SidebarContent items={items} onNavigate={() => setMobileOpen(false)} hideHeader />
+            <SidebarContent
+              items={items}
+              openJobCount={openJobCount}
+              onNavigate={() => setMobileOpen(false)}
+              hideHeader
+            />
           </aside>
         </div>
       )}
@@ -87,10 +98,15 @@ export function DashboardShell({
             <SchoolLogo size="sm" />
           </div>
 
+          {/* The box was a placeholder that only raised a toast; it now goes
+              to the real search (A-FR-7.6). Present on every screen, because a
+              parent can turn up at the counter mid-anything. */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              toast.info(t('searchHint'));
+              const q = new FormData(e.currentTarget).get('q');
+              const term = typeof q === 'string' ? q.trim() : '';
+              router.push(term ? `/search?q=${encodeURIComponent(term)}` : '/search');
             }}
             className="relative hidden max-w-xl flex-1 md:block"
           >
@@ -121,6 +137,17 @@ export function DashboardShell({
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 print:max-w-none print:p-0">
           {children}
         </main>
+
+        {/* Every authenticated screen, discreetly (A-13). Sentry catches
+            crashes; the failures that matter most here -- a wrong total, a
+            receipt naming the wrong parent -- never throw, so the only way to
+            hear about them is to make telling someone take ten seconds.
+            print:hidden because it has no business on a receipt. */}
+        <footer className="mx-auto w-full max-w-7xl px-4 pb-6 sm:px-6 print:hidden">
+          <div className="flex justify-center border-t pt-4">
+            <ReportProblemDialog />
+          </div>
+        </footer>
       </div>
     </div>
   );
@@ -128,10 +155,12 @@ export function DashboardShell({
 
 function SidebarContent({
   items,
+  openJobCount,
   onNavigate,
   hideHeader
 }: {
   items: NavItem[];
+  openJobCount?: number;
   onNavigate?: () => void;
   hideHeader?: boolean;
 }) {
@@ -172,6 +201,16 @@ function SidebarContent({
                 <>
                   <Icon className="size-[18px] shrink-0" />
                   <span className="truncate">{label(item)}</span>
+                  {/* Only when there is something to answer for: a "0" badge is
+                      furniture, and the seller stops seeing it. */}
+                  {item.key === 'openJobs' && openJobCount ? (
+                    <Badge
+                      variant={active ? 'secondary' : 'default'}
+                      className="ml-auto tabular-nums text-[10px]"
+                    >
+                      {openJobCount}
+                    </Badge>
+                  ) : null}
                   {!item.href && (
                     <Badge variant="ghost" className="ml-auto text-[10px]">
                       {tDash('planned')}

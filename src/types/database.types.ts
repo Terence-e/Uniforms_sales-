@@ -15,7 +15,16 @@ export type Json =
   | Json[];
 
 export type UserRole = 'seller' | 'administration' | 'maintenance' | 'super_admin';
-export type PaymentMethod = 'cash' | 'mobile_money' | 'bank_transfer';
+/**
+ * 'bank_transfer' is retained because Postgres cannot remove an enum value, but
+ * the app no longer offers it -- the spec names Cash, MoMo and Orange Money
+ * (A-FR-6.3), and no row anywhere uses it.
+ */
+export type PaymentMethod =
+  | 'cash'
+  | 'mobile_money'
+  | 'orange_money'
+  | 'bank_transfer';
 export type StockMovementKind =
   | 'intake'
   | 'sale'
@@ -23,6 +32,12 @@ export type StockMovementKind =
   | 'adjustment'
   | 'collection'
   | 'production';
+export type AlterationStatus =
+  | 'received'
+  | 'in_progress'
+  | 'ready'
+  | 'returned'
+  | 'cancelled';
 export type OrderStatus =
   | 'ordered'
   | 'in_production'
@@ -216,8 +231,12 @@ export type Database = {
           discount: number;
           total: number;
           notes: string | null;
+          discount_reason: string | null;
           signature_url: string | null;
           seller_id: string;
+          recorded_by: string | null;
+          received_by: string | null;
+          payment_reference: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -234,8 +253,12 @@ export type Database = {
           discount?: number;
           total: number;
           notes?: string | null;
+          discount_reason?: string | null;
           signature_url?: string | null;
           seller_id: string;
+          recorded_by?: string | null;
+          received_by?: string | null;
+          payment_reference?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -252,12 +275,28 @@ export type Database = {
           discount?: number;
           total?: number;
           notes?: string | null;
+          discount_reason?: string | null;
           signature_url?: string | null;
           seller_id?: string;
+          recorded_by?: string | null;
+          received_by?: string | null;
+          payment_reference?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'sales_recorded_by_fkey';
+            columns: ['recorded_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'sales_received_by_fkey';
+            columns: ['received_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'sales_seller_id_fkey';
             columns: ['seller_id'];
@@ -270,7 +309,7 @@ export type Database = {
         Row: {
           id: string;
           sale_id: string;
-          product_id: string | null;
+          product_id: string;
           description: string;
           size: string | null;
           unit_price: number;
@@ -281,7 +320,7 @@ export type Database = {
         Insert: {
           id?: string;
           sale_id: string;
-          product_id?: string | null;
+          product_id: string;
           description: string;
           size?: string | null;
           unit_price: number;
@@ -532,6 +571,134 @@ export type Database = {
           }
         ];
       };
+      alterations: {
+        Row: {
+          id: string;
+          alteration_no: string;
+          received_at: string;
+          expected_ready_date: string | null;
+          status: AlterationStatus;
+          status_reason: string | null;
+          customer_name: string;
+          student_name: string | null;
+          class_level: string | null;
+          phone: string | null;
+          garment: string;
+          size: string | null;
+          work_required: string;
+          charge: number;
+          payment_method: PaymentMethod | null;
+          paid_at: string | null;
+          notes: string | null;
+          received_by: string;
+          returned_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          alteration_no?: string;
+          received_at?: string;
+          expected_ready_date?: string | null;
+          status?: AlterationStatus;
+          status_reason?: string | null;
+          customer_name: string;
+          student_name?: string | null;
+          class_level?: string | null;
+          phone?: string | null;
+          garment: string;
+          size?: string | null;
+          work_required: string;
+          charge?: number;
+          payment_method?: PaymentMethod | null;
+          paid_at?: string | null;
+          notes?: string | null;
+          received_by: string;
+          returned_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          alteration_no?: string;
+          received_at?: string;
+          expected_ready_date?: string | null;
+          status?: AlterationStatus;
+          status_reason?: string | null;
+          customer_name?: string;
+          student_name?: string | null;
+          class_level?: string | null;
+          phone?: string | null;
+          garment?: string;
+          size?: string | null;
+          work_required?: string;
+          charge?: number;
+          payment_method?: PaymentMethod | null;
+          paid_at?: string | null;
+          notes?: string | null;
+          received_by?: string;
+          returned_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'alterations_received_by_fkey';
+            columns: ['received_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      bug_reports: {
+        Row: {
+          id: string;
+          reported_at: string;
+          reporter_id: string | null;
+          reporter_name: string | null;
+          description: string;
+          page_url: string | null;
+          user_agent: string | null;
+          screenshot: string | null;
+          resolved_at: string | null;
+          resolved_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          reported_at?: string;
+          reporter_id?: string | null;
+          reporter_name?: string | null;
+          description: string;
+          page_url?: string | null;
+          user_agent?: string | null;
+          screenshot?: string | null;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          reported_at?: string;
+          reporter_id?: string | null;
+          reporter_name?: string | null;
+          description?: string;
+          page_url?: string | null;
+          user_agent?: string | null;
+          screenshot?: string | null;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'bug_reports_reporter_id_fkey';
+            columns: ['reporter_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       collections: {
         Row: {
           id: string;
@@ -623,12 +790,38 @@ export type Database = {
     Functions: {
       is_admin: { Args: Record<string, never>; Returns: boolean };
       is_super_admin: { Args: Record<string, never>; Returns: boolean };
+      is_maintenance: { Args: Record<string, never>; Returns: boolean };
       can_oversee: { Args: Record<string, never>; Returns: boolean };
       can_operate: { Args: Record<string, never>; Returns: boolean };
       current_user_role: { Args: Record<string, never>; Returns: UserRole };
       count_active_users: { Args: Record<string, never>; Returns: number };
       next_reference: { Args: { p_prefix: string }; Returns: string };
+      search_transactions: {
+        Args: {
+          p_term: string | null;
+          p_kinds?: string[] | null;
+          p_stage?: string | null;
+          p_from?: string | null;
+          p_to?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          kind: string;
+          id: string;
+          reference: string;
+          occurred_at: string;
+          customer_name: string;
+          student_name: string | null;
+          phone: string | null;
+          status: string | null;
+          amount: number;
+          match_rank: number;
+          total_count: number;
+        }[];
+      };
       order_status_rank: { Args: { s: OrderStatus }; Returns: number };
+      alteration_status_rank: { Args: { s: AlterationStatus }; Returns: number };
       collect_order_lines: {
         Args: {
           p_order_id: string;
@@ -682,6 +875,7 @@ export type Database = {
       payment_method: PaymentMethod;
       stock_movement_kind: StockMovementKind;
       order_status: OrderStatus;
+      alteration_status: AlterationStatus;
     };
     CompositeTypes: Record<never, never>;
   };
@@ -703,5 +897,7 @@ export type StockLevel = Tables<'stock_levels'>;
 export type StockMovement = Tables<'stock_movements'>;
 export type Order = Tables<'orders'>;
 export type OrderItem = Tables<'order_items'>;
+export type Alteration = Tables<'alterations'>;
+export type BugReport = Tables<'bug_reports'>;
 export type Collection = Tables<'collections'>;
 export type CollectionItem = Tables<'collection_items'>;

@@ -2,6 +2,8 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { listRecentSales } from '@/actions/sales';
 import { listProducts } from '@/actions/stock';
+import { listStaff } from '@/actions/orders';
+import { getProfile } from '@/actions/auth';
 import { SaleForm } from '@/components/forms/sale-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,9 +24,11 @@ export default async function SalesPage({ params }: Props) {
 
   // Both hit the same connection pool; fetch them together rather than
   // waterfalling the product list behind the recent-sales query.
-  const [products, recent, t] = await Promise.all([
+  const [products, recent, staff, profile, t] = await Promise.all([
     listProducts(),
     listRecentSales(8),
+    listStaff(),
+    getProfile(),
     getTranslations('Sales')
   ]);
 
@@ -35,7 +39,11 @@ export default async function SalesPage({ params }: Props) {
           <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <SaleForm products={products} />
+        <SaleForm
+          products={products}
+          staff={staff}
+          currentUserId={profile?.id ?? ''}
+        />
       </div>
 
       <Card className="h-fit lg:sticky lg:top-6">

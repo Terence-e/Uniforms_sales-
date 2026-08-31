@@ -1,0 +1,10 @@
+-- Rollback for 20260101001800_reference_format.sql.
+--
+-- MANUAL ONLY -- see supabase/README.md.
+--
+-- Deliberately a no-op. This migration only restores the function body that
+-- 20260101000800 already defines, so "undoing" it would mean deliberately
+-- reintroducing a padding width that disagrees with every reference already
+-- issued. If you genuinely want a different width, change it in one place --
+-- 20260101000800 -- and add a forward migration re-asserting that, rather than
+-- rolling this back.

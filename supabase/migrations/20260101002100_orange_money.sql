@@ -1,0 +1,16 @@
+-- Orange Money as its own payment method (A-FR-6.3).
+--
+-- The spec names three: Cash, MoMo, Orange Money. MTN Mobile Money and Orange
+-- Money are separate providers with separate float, separate statements and
+-- separate reconciliation -- collapsing both into one 'mobile_money' loses
+-- which one actually took the money, and the daily cash reconciliation cannot
+-- balance a till it cannot break down.
+--
+-- Existing 'mobile_money' rows are left alone and read as MoMo, which is what
+-- they were: Orange Money had no way of being recorded before this, so nothing
+-- filed under mobile_money could have been Orange.
+--
+-- 'bank_transfer' is not in the spec's list. It stays in the type because
+-- Postgres cannot remove an enum value, but the UI stops offering it -- no row
+-- anywhere currently uses it, so nothing is stranded.
+alter type public.payment_method add value if not exists 'orange_money';

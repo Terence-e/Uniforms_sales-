@@ -56,3 +56,35 @@ export const EMPTY_PRODUCTION_LINE: ProductionLineInput = {
 export function totalUnits(lines: readonly { quantity: unknown }[]): number {
   return lines.reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
 }
+
+// ------------------------------------------------------------- adjustments
+
+/**
+ * Stock adjustment (A-FR-5.5): a physical count that disagrees, damage, a
+ * defect, a loss.
+ *
+ * Mirrors the stock_movements_adjustment_needs_reason constraint added in
+ * 20260101002000. The database refuses an unexplained adjustment whatever the
+ * form does; this is the message the seller actually reads.
+ */
+export const adjustmentSchema = z.object({
+  productId: z.uuid({ message: 'required' }),
+  /**
+   * Signed and non-zero. Positive adds, negative removes -- a count that came
+   * out two short is -2, not "remove 2", because the ledger reads as arithmetic
+   * on the balance rather than as a pair of opposite verbs.
+   */
+  quantity: z.coerce
+    .number({ message: 'positive' })
+    .int({ message: 'wholeNumber' })
+    .refine((n) => n !== 0, { message: 'nonZero' })
+    .refine((n) => Math.abs(n) <= 10000, { message: 'positive' }),
+  /** Three characters minimum: "x" answers nothing when read back. */
+  reason: z
+    .string({ message: 'reasonRequired' })
+    .trim()
+    .min(3, { message: 'reasonRequired' })
+    .max(500)
+});
+
+export type AdjustmentInput = z.input<typeof adjustmentSchema>;

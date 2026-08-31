@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getProfile, signOut } from '@/actions/auth';
+import { countOpenJobs } from '@/actions/open-jobs';
 import { DashboardShell } from '@/components/dashboard/dashboard-shell';
 import { Button } from '@/components/ui/button';
 import type { UserRole } from '@/types/database.types';
@@ -37,7 +38,13 @@ export default async function DashboardLayout({ children, params }: Props) {
   }
 
   const role = profile.role as UserRole;
-  const tDash = await getTranslations('Dashboard');
+  // Read here rather than per page so the badge is on every screen (A-FR-9.21).
+  // It costs one query per navigation; the count is small and RLS-scoped, and a
+  // badge that only appears on some screens would be worse than none.
+  const [tDash, openJobCount] = await Promise.all([
+    getTranslations('Dashboard'),
+    countOpenJobs()
+  ]);
 
   return (
     <DashboardShell
@@ -45,6 +52,7 @@ export default async function DashboardLayout({ children, params }: Props) {
       userName={profile.full_name || profile.email}
       roleLabel={tDash(`roles.${role}`)}
       avatarUrl={profile.avatar_url}
+      openJobCount={openJobCount}
     >
       {children}
     </DashboardShell>

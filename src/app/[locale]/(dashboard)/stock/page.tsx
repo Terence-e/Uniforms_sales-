@@ -5,7 +5,9 @@ import {
   listStock,
   listTailorNames
 } from '@/actions/stock';
+import { listWaitingOrderCounts } from '@/actions/orders';
 import { ProductionForm } from '@/components/forms/production-form';
+import { AdjustStockDialog } from '@/components/forms/adjust-stock-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -30,11 +32,14 @@ export default async function StockPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [products, stock, tailors, recent, t, tProd] = await Promise.all([
+  // Fetched with the page rather than per selection: picking a product then
+  // shows its waiting count instantly instead of waiting on a round trip.
+  const [products, stock, tailors, recent, waiting, t, tProd] = await Promise.all([
     listProducts(),
     listStock(),
     listTailorNames(),
     listRecentProduction(10),
+    listWaitingOrderCounts(),
     getTranslations('Stock'),
     getTranslations('Production')
   ]);
@@ -49,7 +54,7 @@ export default async function StockPage({ params }: Props) {
         <p className="text-sm text-muted-foreground">{tProd('subtitle')}</p>
       </div>
 
-      <ProductionForm products={products} tailors={tailors} />
+      <ProductionForm products={products} tailors={tailors} waiting={waiting} />
 
       {recent.length > 0 ? (
         <Card>
@@ -101,7 +106,10 @@ export default async function StockPage({ params }: Props) {
                 <TableRow>
                   <TableHead>{t('product')}</TableHead>
                   <TableHead>{t('size')}</TableHead>
-                  <TableHead className="text-right">{t('quantity')}</TableHead>
+                  <TableHead className="text-right">{t('inStock')}</TableHead>
+                  <TableHead className="text-right">{t('reserved')}</TableHead>
+                  <TableHead className="text-right">{t('available')}</TableHead>
+                  <TableHead className="w-0" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -115,6 +123,31 @@ export default async function StockPage({ params }: Props) {
                       <span className={product.isLow ? 'text-destructive font-medium' : ''}>
                         {product.quantity}
                       </span>
+                    </TableCell>
+                    {/* Reserved is dimmed at zero: nothing is spoken for, so
+                        there is nothing to think about. */}
+                    <TableCell className="text-right tabular-nums">
+                      <span className={product.reserved > 0 ? '' : 'text-muted-foreground'}>
+                        {product.reserved}
+                      </span>
+                    </TableCell>
+                    {/* Available is the number that decides whether a walk-in
+                        can be served, so it carries the weight (A-FR-9.10). */}
+                    <TableCell className="text-right tabular-nums font-medium">
+                      <span className={product.available <= 0 ? 'text-destructive' : ''}>
+                        {product.available}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {/* Opened from the row whose number is wrong, so there is
+                          no product to pick (A-FR-5.5). */}
+                      <AdjustStockDialog
+                        productId={product.id}
+                        productLabel={
+                          product.size ? `${name(product)} — ${product.size}` : name(product)
+                        }
+                        currentQuantity={product.quantity}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

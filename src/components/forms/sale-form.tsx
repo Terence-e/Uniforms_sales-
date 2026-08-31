@@ -5,9 +5,10 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema';
 import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { Trash2, Plus } from 'lucide-react';
-import { useRouter } from '@/i18n/navigation';
-import { createSale } from '@/actions/sales';
+import { Trash2, Plus, TriangleAlert } from 'lucide-react';
+import { Link, useRouter } from '@/i18n/navigation';
+import { createSale, type Shortfall } from '@/actions/sales';
+import { withSaveDeadline, type SaveOutcome } from '@/lib/save-outcome';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,14 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 import { SignaturePad } from '@/components/signature-pad';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -44,6 +53,14 @@ export type ProductOption = {
   size: string | null;
   unit_price: number;
   category: string;
+  /**
+   * What can actually be sold: in stock minus what Ready orders have already
+   * claimed (A-FR-9.10). Optional so the production form, which cares about
+   * neither, can keep passing the same shape.
+   */
+  available?: number;
+  inStock?: number;
+  reserved?: number;
 };
 
 const DEFAULTS: SaleInput = {
@@ -54,21 +71,56 @@ const DEFAULTS: SaleInput = {
   paymentMethod: 'cash',
   items: [{ ...EMPTY_SALE_ITEM }],
   discount: 0,
+  discountReason: null,
+  belowStockAck: false,
   notes: null,
-  signature: null
+  signature: null,
+  recordedBy: null,
+  receivedBy: null,
+  paymentReference: null
 };
 
-export function SaleForm({ products }: { products: ProductOption[] }) {
+export function SaleForm({
+  products,
+  staff,
+  currentUserId
+}: {
+  products: ProductOption[];
+  /** Active staff, for the two attribution selectors (A-FR-6.4, A-FR-6.5). */
+  staff: { id: string; full_name: string }[];
+  currentUserId: string;
+}) {
   const t = useTranslations('Sales');
   const tv = useTranslations('Validation');
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [signature, setSignature] = useState<string | null>(null);
+  /** Set when the server answers 'belowStock'; drives the confirm dialog. */
+  /**
+   * Amount tendered, kept in component state rather than in the form values
+   * (A-FR-6.11).
+   *
+   * It is a counting aid, not part of the sale: nothing is stored and nothing
+   * is printed. Keeping it out of the form values means it cannot be submitted
+   * by accident, and the schema stays a description of what a sale actually is.
+   */
+  const [tendered, setTendered] = useState('');
+  /**
+   * What happened to the last attempt, shown as a banner rather than a toast.
+   * A toast is gone in four seconds; "did my sale save?" is a question the
+   * seller is still asking a minute later (A-NFR-3).
+   */
+  const [outcome, setOutcome] = useState<SaveOutcome | null>(null);
+  const [shortfalls, setShortfalls] = useState<Shortfall[] | null>(null);
+  const [pending, setPending] = useState<SaleInput | null>(null);
 
   const form = useForm<SaleInput>({
     resolver: standardSchemaResolver(saleSchema),
-    defaultValues: DEFAULTS,
+    // Both attributions start as whoever is signed in, which is right far more
+    // often than not -- the selectors exist for the shared-till case, not as a
+    // question the seller must answer on every sale.
+    defaultValues: { ...DEFAULTS, recordedBy: currentUserId, receivedBy: currentUserId },
     mode: 'onSubmit'
   });
 
@@ -79,6 +131,11 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
   // keystroke without re-rendering the whole form tree twice.
   const watchedItems = useWatch({ control, name: 'items' });
   const watchedDiscount = useWatch({ control, name: 'discount' });
+  const watchedMethod = useWatch({ control, name: 'paymentMethod' });
+  const isCash = watchedMethod === 'cash';
+  // Cash has no transaction to reference, so the field would be noise.
+  const needsReference =
+    watchedMethod === 'mobile_money' || watchedMethod === 'orange_money';
 
   const totals = useMemo(() => {
     const lines = (watchedItems ?? []).map((item) => ({
@@ -87,6 +144,11 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
     }));
     return computeTotals(lines, Number(watchedDiscount) || 0);
   }, [watchedItems, watchedDiscount]);
+
+  const tenderedAmount = Number(tendered) || 0;
+  // Signed on purpose: positive is change to hand back, negative is money still
+  // owed. Which of the two is shown is decided in the totals box below.
+  const changeDue = tenderedAmount - totals.total;
 
   const productLabel = (product: ProductOption) => {
     const name = locale === 'fr' ? product.name_fr : product.name_en;
@@ -102,6 +164,8 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
       shouldDirty: true
     });
     setValue(`items.${index}.size`, product.size, { shouldDirty: true });
+    // The catalogue price, shown for confirmation. The server re-reads it
+    // anyway, so this is what the seller sees rather than what they send.
     setValue(`items.${index}.unitPrice`, product.unit_price, {
       shouldDirty: true
     });
@@ -120,9 +184,41 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
     return known.includes(key) ? tv(key as never) : key;
   }
 
-  const onSubmit = handleSubmit((values) => {
+  /**
+   * Sends the sale. Called first without consent; if the server comes back
+   * asking about stock, called again with it once the seller confirms.
+   */
+  function send(values: SaleInput, belowStockAck: boolean) {
+    setOutcome(null);
+
     startTransition(async () => {
-      const result = await createSale({ ...values, signature });
+      /*
+       * Every ending is caught. Before this there was no try/catch at all: a
+       * dropped connection rejected inside the transition and the seller saw
+       * nothing whatsoever -- no toast, no banner, no explanation -- which is
+       * exactly the failure A-NFR-3 is written about.
+       */
+      const attempt = await withSaveDeadline(() =>
+        createSale({ ...values, signature, belowStockAck })
+      );
+
+      if (!attempt.ok) {
+        // A timeout or a thrown error tells us the REPLY failed. It does not
+        // tell us the write failed -- the sale may well be in the database.
+        // Saying "not saved" here is what causes the duplicate.
+        if (attempt.reason === 'threw') console.error('sale save failed', attempt.error);
+        setOutcome({ state: 'unknown' });
+        return;
+      }
+
+      const result = attempt.value;
+
+      if (!result.ok && 'shortfalls' in result) {
+        // Not a failure -- a question. Hold the sale and ask (A-FR-5.6).
+        setShortfalls(result.shortfalls);
+        setPending(values);
+        return;
+      }
 
       if (!result.ok) {
         if (result.error === 'validation' && result.fieldErrors) {
@@ -130,27 +226,82 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
             form.setError(path as never, { message: error });
           }
         }
-        toast.error(
+
+        // The server answered no. createSale deletes the sale row if the
+        // lines fail to insert, so a rejection really does mean nothing was
+        // written and a retry is safe -- which is why this message is allowed
+        // to say so, and the timeout message below is not.
+        //
+        // Whitelisted, not pattern-matched: anything that is not a code we
+        // recognise is a raw Postgres string, and "new row violates check
+        // constraint sales_discount_needs_reason" is not something to put in
+        // front of a seller. Those go to the console and the seller gets a
+        // sentence they can act on.
+        const message =
           result.error === 'validation'
             ? tv('required')
             : result.error === 'unauthorized'
-              ? t('submit')
-              : result.error
-        );
+              ? t('errorUnauthorized')
+              : result.error === 'unknownProduct' || result.error === 'productInactive'
+                ? t('errorProduct')
+                : t('errorGeneric');
+
+        if (result.error !== 'validation') {
+          console.error('sale rejected', result.error);
+        }
+        setOutcome({ state: 'rejected', message });
         return;
       }
 
+      // Only here -- with the server's confirmation in hand -- is anything
+      // cleared or called a success.
+      setOutcome({ state: 'saved', reference: result.receiptNo, id: result.saleId });
       toast.success(t('success', { receiptNo: result.receiptNo }));
       form.reset(DEFAULTS);
       setSignature(null);
+      setTendered('');
+      setShortfalls(null);
+      setPending(null);
       router.push(`/sales/${result.saleId}/receipt`);
     });
-  });
+  }
+
+  const onSubmit = handleSubmit((values) => send(values, false));
 
   const itemsError = formState.errors.items?.message ?? formState.errors.items?.root?.message;
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-6">
+      {/* Persistent, above the form, and never cleared by a timer. The one
+          question a seller comes back to is "did that save?", and a toast has
+          gone by the time they ask it (A-NFR-3). */}
+      {outcome && outcome.state !== 'saved' ? (
+        <div
+          role="alert"
+          className={
+            outcome.state === 'unknown'
+              ? 'space-y-2 rounded-lg border-2 border-amber-500 bg-amber-50 p-4 dark:bg-amber-950/30'
+              : 'space-y-2 rounded-lg border-2 border-destructive bg-destructive/5 p-4'
+          }
+        >
+          <p className="flex items-center gap-2 font-semibold">
+            <TriangleAlert className="size-4 shrink-0" />
+            {outcome.state === 'unknown' ? t('saveUnknownTitle') : t('saveFailedTitle')}
+          </p>
+          <p className="text-sm">
+            {outcome.state === 'unknown' ? t('saveUnknownBody') : outcome.message}
+          </p>
+          {outcome.state === 'unknown' ? (
+            // Never "it was not saved" -- we do not know that. The reply went
+            // missing; the write may not have. Sending the seller to look is
+            // the only honest instruction, and it is one tap away.
+            <Button asChild variant="outline" size="sm">
+              <Link href="/sales">{t('checkRecentSales')}</Link>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* ------------------------------------------------------- customer */}
       <Card>
         <CardHeader>
@@ -184,9 +335,16 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
             <Select
               defaultValue="cash"
               onValueChange={(value) =>
-                setValue('paymentMethod', value as SaleInput['paymentMethod'], {
-                  shouldDirty: true
-                })
+                {
+                  setValue('paymentMethod', value as SaleInput['paymentMethod'], {
+                    shouldDirty: true
+                  });
+                  // Cleared here rather than in an effect reacting to the
+                  // change: this IS the change. A tendered amount left behind a
+                  // MoMo sale would be nonsense on screen and would reappear on
+                  // the next cash sale.
+                  if (value !== 'cash') setTendered('');
+                }
               }
             >
               <SelectTrigger className="w-full">
@@ -196,6 +354,54 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
                 {PAYMENT_METHODS.map((method) => (
                   <SelectItem key={method} value={method}>
                     {t(`payment.${method}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          {needsReference ? (
+            <Field label={t('paymentReference')}>
+              <Input
+                {...register('paymentReference')}
+                placeholder={t('paymentReferenceHint')}
+                inputMode="text"
+              />
+            </Field>
+          ) : null}
+
+          <Field label={t('recordedBy')}>
+            <Select
+              defaultValue={currentUserId}
+              onValueChange={(value) => setValue('recordedBy', value, { shouldDirty: true })}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {staff.map((person) => (
+                  <SelectItem key={person.id} value={person.id}>
+                    {person.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          {/* Separate from "recorded by" on purpose: when the drawer is short
+              at close of day, who keyed the sale is not the question
+              (A-FR-6.5). */}
+          <Field label={t('receivedBy')}>
+            <Select
+              defaultValue={currentUserId}
+              onValueChange={(value) => setValue('receivedBy', value, { shouldDirty: true })}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {staff.map((person) => (
+                  <SelectItem key={person.id} value={person.id}>
+                    {person.full_name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -222,6 +428,11 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
         <CardContent className="space-y-4">
           {fields.map((field, index) => {
             const itemErrors = formState.errors.items?.[index];
+            const chosenId = watchedItems?.[index]?.productId;
+            const chosen = chosenId
+              ? products.find((candidate) => candidate.id === chosenId)
+              : undefined;
+            const wanted = Number(watchedItems?.[index]?.quantity) || 0;
             const line =
               (Number(watchedItems?.[index]?.unitPrice) || 0) *
               (Number(watchedItems?.[index]?.quantity) || 0);
@@ -242,20 +453,30 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
                     <SelectContent>
                       {products.map((product) => (
                         <SelectItem key={product.id} value={product.id}>
-                          {productLabel(product)}
+                          <span className="flex w-full items-center justify-between gap-3">
+                            <span>{productLabel(product)}</span>
+                            {/* Availability sits beside the name so the seller
+                                reads it while choosing rather than discovering
+                                it afterwards. */}
+                            {typeof product.available === 'number' ? (
+                              <span
+                                className={
+                                  product.available <= 0
+                                    ? 'text-xs font-medium text-destructive'
+                                    : 'text-xs text-muted-foreground'
+                                }
+                              >
+                                {t('availableShort', { count: product.available })}
+                              </span>
+                            ) : null}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input
-                    {...register(`items.${index}.description`)}
-                    placeholder={t('product')}
-                    className="mt-2"
-                    aria-invalid={Boolean(itemErrors?.description)}
-                  />
-                  {itemErrors?.description ? (
+                  {itemErrors?.productId ? (
                     <p className="mt-1 text-xs text-destructive">
-                      {message(itemErrors.description.message)}
+                      {message(itemErrors.productId.message)}
                     </p>
                   ) : null}
                 </div>
@@ -264,13 +485,17 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
                   <Label className="mb-2 text-xs text-muted-foreground">
                     {t('unitPrice')}
                   </Label>
+                  {/* Read-only, not hidden: the seller must see what they are
+                      charging, but the number comes from the catalogue and is
+                      re-read server-side regardless (A-FR-6.6). Reducing a sale
+                      goes through the discount field, which demands a reason. */}
                   <Input
                     {...register(`items.${index}.unitPrice`)}
                     type="number"
-                    min={0}
-                    step="0.01"
-                    inputMode="decimal"
-                    aria-invalid={Boolean(itemErrors?.unitPrice)}
+                    readOnly
+                    tabIndex={-1}
+                    className="bg-muted/50 text-muted-foreground"
+                    aria-readonly="true"
                   />
                 </div>
 
@@ -286,6 +511,21 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
                     inputMode="numeric"
                     aria-invalid={Boolean(itemErrors?.quantity)}
                   />
+                  {/* Shown, never enforced: selling below stock is allowed with
+                      a warning, an override and an audit row, which is a
+                      separate issue. A hard cap here would have to be undone
+                      there. */}
+                  {chosen && typeof chosen.available === 'number' ? (
+                    <p
+                      className={
+                        wanted > chosen.available
+                          ? 'mt-1 text-xs font-medium text-amber-600 dark:text-amber-500'
+                          : 'mt-1 text-xs text-muted-foreground'
+                      }
+                    >
+                      {t('availableShort', { count: chosen.available })}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="flex items-end justify-between gap-2 sm:col-span-3">
@@ -336,6 +576,22 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
               />
             </Field>
 
+            {/* Appears only when there is a reduction to explain -- a permanent
+                empty field would be one more thing to skip past on the busiest
+                screen in the system. */}
+            {(Number(watchedDiscount) || 0) > 0 ? (
+              <Field
+                label={t('discountReason')}
+                error={message(formState.errors.discountReason?.message)}
+              >
+                <Input
+                  {...register('discountReason')}
+                  placeholder={t('discountReasonHint')}
+                  aria-invalid={Boolean(formState.errors.discountReason)}
+                />
+              </Field>
+            ) : null}
+
             <Field label={t('notes')}>
               <Input {...register('notes')} />
             </Field>
@@ -353,6 +609,49 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
               value={formatMoney(totals.total, locale)}
               emphasis
             />
+
+            {/* Cash only (A-FR-6.11). For MoMo and Orange Money there is no
+                cash to count back, so the field would be noise on the busiest
+                screen in the system. */}
+            {isCash ? (
+              <div className="space-y-2 border-t pt-3">
+                <Label htmlFor="tendered" className="text-xs text-muted-foreground">
+                  {t('amountTendered')}
+                </Label>
+                <Input
+                  id="tendered"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  inputMode="decimal"
+                  value={tendered}
+                  onChange={(event) => setTendered(event.target.value)}
+                  placeholder={t('amountTenderedHint')}
+                />
+
+                {tendered !== '' ? (
+                  changeDue >= 0 ? (
+                    // The number being counted back into someone's hand, so it
+                    // is the largest thing in the box.
+                    <div className="flex items-baseline justify-between gap-4 pt-1">
+                      <dt className="font-medium">{t('changeDue')}</dt>
+                      <dd className="text-xl font-bold tabular-nums">
+                        {formatMoney(changeDue, locale)}
+                      </dd>
+                    </div>
+                  ) : (
+                    // Not "-500": a negative change reads as an error at a till,
+                    // where "500 still due" reads as an instruction.
+                    <div className="flex items-baseline justify-between gap-4 pt-1 text-amber-600 dark:text-amber-500">
+                      <dt className="font-medium">{t('stillDue')}</dt>
+                      <dd className="text-xl font-bold tabular-nums">
+                        {formatMoney(Math.abs(changeDue), locale)}
+                      </dd>
+                    </div>
+                  )
+                ) : null}
+              </div>
+            ) : null}
           </dl>
         </CardContent>
       </Card>
@@ -360,6 +659,64 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
       <Button type="submit" size="lg" disabled={isPending} className="w-full sm:w-auto">
         {isPending ? t('submitting') : t('submit')}
       </Button>
+
+      {/* Warns, never blocks. Cancelling writes nothing at all -- no sale, no
+          audit row; only a completed override is worth recording. */}
+      <Dialog
+        open={shortfalls !== null}
+        onOpenChange={(next) => {
+          if (!next) {
+            setShortfalls(null);
+            setPending(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('belowStockTitle')}</DialogTitle>
+            <DialogDescription>{t('belowStockHint')}</DialogDescription>
+          </DialogHeader>
+
+          <ul className="space-y-2 text-sm">
+            {(shortfalls ?? []).map((line) => (
+              <li
+                key={line.description}
+                className="flex items-baseline justify-between gap-3 rounded-lg border p-3"
+              >
+                <span className="font-medium">{line.description}</span>
+                <span className="tabular-nums text-muted-foreground">
+                  {t('belowStockLine', {
+                    requested: line.requested,
+                    available: line.available
+                  })}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShortfalls(null);
+                setPending(null);
+              }}
+            >
+              {t('belowStockCancel')}
+            </Button>
+            <Button
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                if (pending) send(pending, true);
+              }}
+            >
+              {t('belowStockConfirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }
