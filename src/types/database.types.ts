@@ -15,7 +15,16 @@ export type Json =
   | Json[];
 
 export type UserRole = 'seller' | 'administration' | 'maintenance' | 'super_admin';
-export type PaymentMethod = 'cash' | 'mobile_money' | 'bank_transfer';
+/**
+ * 'bank_transfer' is retained because Postgres cannot remove an enum value, but
+ * the app no longer offers it -- the spec names Cash, MoMo and Orange Money
+ * (A-FR-6.3), and no row anywhere uses it.
+ */
+export type PaymentMethod =
+  | 'cash'
+  | 'mobile_money'
+  | 'orange_money'
+  | 'bank_transfer';
 export type StockMovementKind =
   | 'intake'
   | 'sale'
@@ -224,6 +233,9 @@ export type Database = {
           notes: string | null;
           signature_url: string | null;
           seller_id: string;
+          recorded_by: string | null;
+          received_by: string | null;
+          payment_reference: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -242,6 +254,9 @@ export type Database = {
           notes?: string | null;
           signature_url?: string | null;
           seller_id: string;
+          recorded_by?: string | null;
+          received_by?: string | null;
+          payment_reference?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -260,10 +275,25 @@ export type Database = {
           notes?: string | null;
           signature_url?: string | null;
           seller_id?: string;
+          recorded_by?: string | null;
+          received_by?: string | null;
+          payment_reference?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'sales_recorded_by_fkey';
+            columns: ['recorded_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'sales_received_by_fkey';
+            columns: ['received_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'sales_seller_id_fkey';
             columns: ['seller_id'];

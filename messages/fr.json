@@ -297,10 +297,14 @@
     "phone": "T\u00e9l\u00e9phone",
     "paymentMethod": "Mode de paiement",
     "payment": {
-      "cash": "Esp\u00e8ces",
-      "mobile_money": "Mobile money",
-      "bank_transfer": "Virement bancaire"
+      "cash": "Espèces",
+      "mobile_money": "MoMo",
+      "orange_money": "Orange Money"
     },
+    "paymentReference": "Référence du paiement",
+    "paymentReferenceHint": "ID de transaction MoMo / Orange Money",
+    "recordedBy": "Enregistré par",
+    "receivedBy": "Paiement reçu par",
     "items": "Articles",
     "addItem": "Ajouter un article",
     "removeItem": "Retirer",
@@ -527,7 +531,8 @@
     "orderFooter": "Merci. Le v\u00eatement reste en boutique jusqu'au retrait.",
     "backToOrders": "Retour aux commandes",
     "date": "Date",
-    "servedBy": "Servi par",
+    "recordedBy": "Enregistré par",
+    "receivedBy": "Paiement reçu par",
     "customer": "Client",
     "student": "\u00c9l\u00e8ve",
     "class": "Classe",

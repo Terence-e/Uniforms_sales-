@@ -48,6 +48,9 @@ export default async function ReceiptPage({ params, searchParams }: Props) {
     notes: sale.notes,
     signature_url: sale.signature_url,
     seller_name: sale.seller?.full_name ?? '',
+    recorded_by_name: sale.recordedBy?.full_name ?? null,
+    received_by_name: sale.receivedBy?.full_name ?? null,
+    payment_reference: sale.payment_reference,
     items: sale.items ?? []
   };
 

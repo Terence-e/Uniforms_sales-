@@ -38,9 +38,19 @@ export type ExportOptions = {
   schoolName: string;
 };
 
+/**
+ * MoMo and Orange Money are named separately because they are separate
+ * providers with separate float and separate statements -- an export that
+ * calls both "mobile money" cannot be reconciled against either.
+ *
+ * 'bank_transfer' is unused but still in the database type, which cannot drop
+ * values, so it needs a label for exhaustiveness rather than because anything
+ * will print it.
+ */
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   cash: 'Cash',
-  mobile_money: 'Mobile money',
+  mobile_money: 'MoMo',
+  orange_money: 'Orange Money',
   bank_transfer: 'Bank transfer'
 };
 

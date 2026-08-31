@@ -63,10 +63,22 @@ const DEFAULTS: SaleInput = {
   items: [{ ...EMPTY_SALE_ITEM }],
   discount: 0,
   notes: null,
-  signature: null
+  signature: null,
+  recordedBy: null,
+  receivedBy: null,
+  paymentReference: null
 };
 
-export function SaleForm({ products }: { products: ProductOption[] }) {
+export function SaleForm({
+  products,
+  staff,
+  currentUserId
+}: {
+  products: ProductOption[];
+  /** Active staff, for the two attribution selectors (A-FR-6.4, A-FR-6.5). */
+  staff: { id: string; full_name: string }[];
+  currentUserId: string;
+}) {
   const t = useTranslations('Sales');
   const tv = useTranslations('Validation');
   const locale = useLocale();
@@ -76,7 +88,10 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
 
   const form = useForm<SaleInput>({
     resolver: standardSchemaResolver(saleSchema),
-    defaultValues: DEFAULTS,
+    // Both attributions start as whoever is signed in, which is right far more
+    // often than not -- the selectors exist for the shared-till case, not as a
+    // question the seller must answer on every sale.
+    defaultValues: { ...DEFAULTS, recordedBy: currentUserId, receivedBy: currentUserId },
     mode: 'onSubmit'
   });
 
@@ -87,6 +102,10 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
   // keystroke without re-rendering the whole form tree twice.
   const watchedItems = useWatch({ control, name: 'items' });
   const watchedDiscount = useWatch({ control, name: 'discount' });
+  const watchedMethod = useWatch({ control, name: 'paymentMethod' });
+  // Cash has no transaction to reference, so the field would be noise.
+  const needsReference =
+    watchedMethod === 'mobile_money' || watchedMethod === 'orange_money';
 
   const totals = useMemo(() => {
     const lines = (watchedItems ?? []).map((item) => ({
@@ -204,6 +223,54 @@ export function SaleForm({ products }: { products: ProductOption[] }) {
                 {PAYMENT_METHODS.map((method) => (
                   <SelectItem key={method} value={method}>
                     {t(`payment.${method}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          {needsReference ? (
+            <Field label={t('paymentReference')}>
+              <Input
+                {...register('paymentReference')}
+                placeholder={t('paymentReferenceHint')}
+                inputMode="text"
+              />
+            </Field>
+          ) : null}
+
+          <Field label={t('recordedBy')}>
+            <Select
+              defaultValue={currentUserId}
+              onValueChange={(value) => setValue('recordedBy', value, { shouldDirty: true })}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {staff.map((person) => (
+                  <SelectItem key={person.id} value={person.id}>
+                    {person.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          {/* Separate from "recorded by" on purpose: when the drawer is short
+              at close of day, who keyed the sale is not the question
+              (A-FR-6.5). */}
+          <Field label={t('receivedBy')}>
+            <Select
+              defaultValue={currentUserId}
+              onValueChange={(value) => setValue('receivedBy', value, { shouldDirty: true })}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {staff.map((person) => (
+                  <SelectItem key={person.id} value={person.id}>
+                    {person.full_name}
                   </SelectItem>
                 ))}
               </SelectContent>
