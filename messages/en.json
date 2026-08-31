@@ -3,6 +3,10 @@
     "name": "School Uniform Sales",
     "tagline": "Point of sale for school uniforms"
   },
+  "Common": {
+    "close": "Close",
+    "loading": "Loading"
+  },
   "Nav": {
     "dashboard": "Dashboard",
     "profile": "Profile",
