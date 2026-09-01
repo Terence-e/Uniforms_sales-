@@ -19,7 +19,7 @@ import type { StockMovementKind } from '@/types/database.types';
  * ledger can always rebuild the balance if the two ever disagree -- and no
  * screen can edit a quantity directly (A-FR-5.4).
  *
- * `deductStockForSale()` remains written but uncalled: sales still do not move
+ * `deductStockForSale()` is called by `createSale`: sales move
  * stock. Collection does (see collect_order_lines), and production does.
  */
 
@@ -153,9 +153,14 @@ export async function recordStockMovement(params: {
 /**
  * Deducts the lines of a completed sale from stock.
  *
- * Not called by `createSale` yet: until stock counts are actually being kept
- * accurate, deducting from them would produce negative balances that look like
- * real data. Wire this in once phase 2 stocktaking is live.
+ * Called by `createSale`. It was left uncalled while nothing put stock back,
+ * on the grounds that deducting from counts nobody maintained would produce
+ * negative balances that looked like real data. Returns changed that: they
+ * credit stock, so a sale that never debits it makes every return a net gain
+ * and the balance drifts up with each one (A-FR-8.2).
+ *
+ * Below-stock sales are permitted with a warning and an override, so a negative
+ * balance here is a real state the shop can be in, not a bug.
  */
 export async function deductStockForSale(
   saleId: string,

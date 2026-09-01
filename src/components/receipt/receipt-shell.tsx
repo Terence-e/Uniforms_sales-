@@ -144,7 +144,7 @@ export function PaperToggle({
  * the better answer: it falls back to the school's name when public/logo.png is
  * missing, so the header can never render a broken image. That supersedes the
  * NEXT_PUBLIC_SCHOOL_LOGO flag this component originally used -- an env var
- * somebody has to set correctly is a weaker guarantee than an onError handler.
+ * that has to be set correctly is a worse guarantee than an onError handler.
  */
 export function SchoolHeader() {
   return (
