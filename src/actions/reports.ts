@@ -116,6 +116,8 @@ export async function getDailyReconciliation(
       )
       .gte('sold_at', fromIso)
       .lte('sold_at', toIso)
+      // Cancelled sales are not takings (A-FR-6.9); they show in Cancellations.
+      .is('cancelled_at', null)
       .order('sold_at', { ascending: true }),
     admin
       .from('order_items')
@@ -333,7 +335,8 @@ export async function getReport(
         .from('sales')
         .select('sold_at, subtotal, discount, total')
         .gte('sold_at', fromIso)
-        .lte('sold_at', toIso);
+        .lte('sold_at', toIso)
+        .is('cancelled_at', null);
 
       const byDay = new Map<string, { count: number; gross: number; discount: number; net: number }>();
       for (const s of data ?? []) {
@@ -381,13 +384,14 @@ export async function getReport(
         .from('sales')
         .select('items:sale_items ( description, size, quantity, line_total )')
         .gte('sold_at', fromIso)
-        .lte('sold_at', toIso);
+        .lte('sold_at', toIso)
+        .is('cancelled_at', null);
 
       const byItem = new Map<string, { garment: string; size: string; qty: number; revenue: number }>();
       for (const sale of data ?? []) {
         for (const it of sale.items ?? []) {
           const size = it.size ?? '';
-          const k = `${it.description} ${size}`;
+          const k = `${it.description}${size}`;
           const cur = byItem.get(k) ?? { garment: it.description, size, qty: 0, revenue: 0 };
           cur.qty += num(it.quantity);
           cur.revenue += num(it.line_total);
@@ -431,7 +435,7 @@ export async function getReport(
         const p = Array.isArray(m.product) ? m.product[0] : m.product;
         const productName = (p as { name_en?: string } | null)?.name_en ?? '—';
         const size = (p as { size?: string | null } | null)?.size ?? '';
-        const k = `${productName} ${size}`;
+        const k = `${productName}${size}`;
         const cur = byProduct.get(k) ?? { product: productName, size, units: 0 };
         cur.units += num(m.quantity);
         byProduct.set(k, cur);
@@ -524,18 +528,27 @@ export async function getReport(
 
     // -------------------------------------------------------- cancellations
     case 'cancellations': {
-      const { data } = await admin
-        .from('order_items')
-        .select(
-          `line_total, refund_method, status_reason, cancelled_at, description,
-           order:orders!order_items_order_id_fkey ( order_no )`
-        )
-        .eq('status', 'cancelled')
-        .gte('cancelled_at', fromIso)
-        .lte('cancelled_at', toIso)
-        .order('cancelled_at', { ascending: true });
+      // Two sources: an order LINE cancelled mid-workflow, and a whole SALE
+      // cancelled after the fact (A-FR-6.9). Both belong in this report.
+      const [lineRes, saleRes] = await Promise.all([
+        admin
+          .from('order_items')
+          .select(
+            `line_total, refund_method, status_reason, cancelled_at, description,
+             order:orders!order_items_order_id_fkey ( order_no )`
+          )
+          .eq('status', 'cancelled')
+          .gte('cancelled_at', fromIso)
+          .lte('cancelled_at', toIso),
+        admin
+          .from('sales')
+          .select('receipt_no, total, cancel_reason, cancelled_at')
+          .not('cancelled_at', 'is', null)
+          .gte('cancelled_at', fromIso)
+          .lte('cancelled_at', toIso)
+      ]);
 
-      const rows: ReportRow[] = (data ?? []).map((c2) => {
+      const lineRows: ReportRow[] = (lineRes.data ?? []).map((c2) => {
         const order = Array.isArray(c2.order) ? c2.order[0] : c2.order;
         return {
           order: (order as { order_no?: string } | null)?.order_no ?? '—',
@@ -546,6 +559,19 @@ export async function getReport(
           amount: num(c2.line_total)
         };
       });
+
+      const saleRows: ReportRow[] = (saleRes.data ?? []).map((s) => ({
+        order: s.receipt_no,
+        item: t('suite.wholeSale'),
+        reason: s.cancel_reason ?? '—',
+        refundMethod: '—',
+        when: s.cancelled_at,
+        amount: num(s.total)
+      }));
+
+      const rows: ReportRow[] = [...lineRows, ...saleRows].sort((a, b) =>
+        String(a.when ?? '').localeCompare(String(b.when ?? ''))
+      );
 
       return {
         key,

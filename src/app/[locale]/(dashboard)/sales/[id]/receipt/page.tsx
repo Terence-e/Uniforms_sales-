@@ -5,6 +5,7 @@ import { getSaleWithItems } from '@/actions/sales';
 import { listReturnsForSale } from '@/actions/returns';
 import { Link } from '@/i18n/navigation';
 import { ReceiptPrint, type ReceiptData } from '@/components/receipt/receipt-print';
+import { formatDateTime } from '@/lib/format';
 
 type Props = {
   params: Promise<{ locale: string; id: string }>;
@@ -68,8 +69,27 @@ export default async function ReceiptPage({ params, searchParams }: Props) {
   // separation this requirement is about.
   const returns = await listReturnsForSale(sale.id);
 
+  // Cancelling is for operators only -- Administration is read-only (A-FR-2.2).
+  // The cancel_sale RPC enforces this too; hiding the button is the courtesy,
+  // not the guard. Offered only while the sale is live.
+  const tSales = await getTranslations({ locale, namespace: 'Sales' });
+
   return (
     <>
+      {sale.cancelled_at ? (
+        <div className="mb-4 rounded-lg border border-destructive bg-destructive/10 p-4 text-sm">
+          <p className="font-semibold text-destructive">
+            {tSales('cancelledBanner', { at: formatDateTime(sale.cancelled_at, locale) })}
+          </p>
+          <p className="mt-1">
+            {tSales('cancelledBy', { name: sale.cancelledBy?.full_name ?? '—' })}
+          </p>
+          <p className="mt-0.5 text-muted-foreground">
+            {tSales('cancelReason', { reason: sale.cancel_reason ?? '—' })}
+          </p>
+        </div>
+      ) : null}
+
       {returns.length > 0 ? (
         <div className="mb-4 rounded-lg border border-amber-500 bg-amber-50 p-4 text-sm dark:bg-amber-950/30 print:hidden">
           <p className="font-semibold">{t('hasReturns')}</p>

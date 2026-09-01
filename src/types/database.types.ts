@@ -243,6 +243,9 @@ export type Database = {
           recorded_by: string | null;
           received_by: string | null;
           payment_reference: string | null;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+          cancel_reason: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -265,6 +268,9 @@ export type Database = {
           recorded_by?: string | null;
           received_by?: string | null;
           payment_reference?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          cancel_reason?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -287,6 +293,9 @@ export type Database = {
           recorded_by?: string | null;
           received_by?: string | null;
           payment_reference?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          cancel_reason?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -300,6 +309,12 @@ export type Database = {
           {
             foreignKeyName: 'sales_received_by_fkey';
             columns: ['received_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'sales_cancelled_by_fkey';
+            columns: ['cancelled_by'];
             referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
@@ -1027,6 +1042,10 @@ export type Database = {
           p_items: Json;
         };
         Returns: { id: string; order_no: string }[];
+      };
+      cancel_sale: {
+        Args: { p_sale_id: string; p_reason: string };
+        Returns: { id: string; receipt_no: string }[];
       };
     };
     Enums: {
