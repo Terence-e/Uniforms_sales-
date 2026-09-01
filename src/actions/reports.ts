@@ -1,14 +1,18 @@
 'use server';
 
+import { getTranslations } from 'next-intl/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { logAudit } from '@/lib/audit';
 import {
+  buildGenericReportWorkbook,
   buildReconciliationWorkbook,
   reconciliationReportFilename,
+  reportFilename,
   workbookToUint8Array
 } from '@/lib/excel-export';
 import { CURRENCY, SCHOOL } from '@/lib/format';
+import type { ReportKey, ReportResult, ReportRow, ReportStamp } from '@/lib/report-types';
 import type { PaymentMethod } from '@/types/database.types';
 
 /**
@@ -268,4 +272,392 @@ export async function exportReconciliationToExcel(
     filename: reconciliationReportFilename(from, to),
     base64: Buffer.from(workbookToUint8Array(workbook)).toString('base64')
   };
+}
+
+// ==================================================================
+// Report suite (A-FR-12.3). Every report is normalised to ReportResult so one
+// table renderer, one Excel builder and one print view serve all of them. All
+// figures come through the service-role client: reports are whole-shop and
+// available to every role (A-FR-12.4), while orders/alterations are otherwise
+// seller-scoped by RLS.
+// ==================================================================
+
+const dayKey = (isoTs: string) => isoTs.slice(0, 10);
+
+/** Builds the generation stamp (date, user, filters) shared by every export. */
+export async function reportStamp(from: string, to: string): Promise<ReportStamp> {
+  const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  let generatedBy = user?.email ?? 'unknown';
+  if (user) {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .single();
+    generatedBy = data?.full_name || user.email || user.id;
+  }
+  return {
+    schoolName: SCHOOL.name,
+    generatedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    generatedBy,
+    from,
+    to
+  };
+}
+
+/**
+ * Fetches one report as a generic table. Column labels are localised here so
+ * the on-screen view, the Excel sheet and the print view all read the same.
+ */
+export async function getReport(
+  key: ReportKey,
+  from: string,
+  to: string
+): Promise<ReportResult> {
+  const admin = createAdminClient();
+  const t = await getTranslations('Reports');
+  const c = (colKey: string) => t(`suite.col.${colKey}`);
+  const fromIso = new Date(`${from}T00:00:00`).toISOString();
+  const toIso = new Date(`${to}T23:59:59.999`).toISOString();
+  const title = t(`suite.reports.${key}`);
+  const methodLabel = (m: PaymentMethod) => t(`recon.methods.${m}`);
+
+  switch (key) {
+    // ---------------------------------------------------------- sales by period
+    case 'sales-by-period': {
+      const { data } = await admin
+        .from('sales')
+        .select('sold_at, subtotal, discount, total')
+        .gte('sold_at', fromIso)
+        .lte('sold_at', toIso);
+
+      const byDay = new Map<string, { count: number; gross: number; discount: number; net: number }>();
+      for (const s of data ?? []) {
+        const d = dayKey(s.sold_at);
+        const cur = byDay.get(d) ?? { count: 0, gross: 0, discount: 0, net: 0 };
+        cur.count += 1;
+        cur.gross += num(s.subtotal);
+        cur.discount += num(s.discount);
+        cur.net += num(s.total);
+        byDay.set(d, cur);
+      }
+      const rows: ReportRow[] = Array.from(byDay, ([date, v]) => ({
+        date,
+        transactions: v.count,
+        gross: v.gross,
+        discount: v.discount,
+        net: v.net
+      })).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+      const totals: ReportRow = {
+        date: t('suite.total'),
+        transactions: rows.reduce((s, r) => s + Number(r.transactions), 0),
+        gross: rows.reduce((s, r) => s + Number(r.gross), 0),
+        discount: rows.reduce((s, r) => s + Number(r.discount), 0),
+        net: rows.reduce((s, r) => s + Number(r.net), 0)
+      };
+      return {
+        key,
+        title,
+        columns: [
+          { key: 'date', label: c('date'), type: 'date' },
+          { key: 'transactions', label: c('transactions'), type: 'number' },
+          { key: 'gross', label: c('gross'), type: 'money' },
+          { key: 'discount', label: c('discount'), type: 'money' },
+          { key: 'net', label: c('net'), type: 'money' }
+        ],
+        rows,
+        totals
+      };
+    }
+
+    // ------------------------------------------------------- sales by garment+size
+    case 'sales-by-garment': {
+      const { data } = await admin
+        .from('sales')
+        .select('items:sale_items ( description, size, quantity, line_total )')
+        .gte('sold_at', fromIso)
+        .lte('sold_at', toIso);
+
+      const byItem = new Map<string, { garment: string; size: string; qty: number; revenue: number }>();
+      for (const sale of data ?? []) {
+        for (const it of sale.items ?? []) {
+          const size = it.size ?? '';
+          const k = `${it.description} ${size}`;
+          const cur = byItem.get(k) ?? { garment: it.description, size, qty: 0, revenue: 0 };
+          cur.qty += num(it.quantity);
+          cur.revenue += num(it.line_total);
+          byItem.set(k, cur);
+        }
+      }
+      const rows: ReportRow[] = Array.from(byItem.values())
+        .map((v) => ({ garment: v.garment, size: v.size || '—', qty: v.qty, revenue: v.revenue }))
+        .sort((a, b) => Number(b.revenue) - Number(a.revenue));
+
+      return {
+        key,
+        title,
+        columns: [
+          { key: 'garment', label: c('garment'), type: 'text' },
+          { key: 'size', label: c('size'), type: 'text' },
+          { key: 'qty', label: c('qty'), type: 'number' },
+          { key: 'revenue', label: c('revenue'), type: 'money' }
+        ],
+        rows,
+        totals: {
+          garment: t('suite.total'),
+          size: '',
+          qty: rows.reduce((s, r) => s + Number(r.qty), 0),
+          revenue: rows.reduce((s, r) => s + Number(r.revenue), 0)
+        }
+      };
+    }
+
+    // ----------------------------------------------------------- production
+    case 'production': {
+      const { data } = await admin
+        .from('stock_movements')
+        .select('quantity, product:products!stock_movements_product_id_fkey ( name_en, size )')
+        .eq('kind', 'production')
+        .gte('occurred_on', from)
+        .lte('occurred_on', to);
+
+      const byProduct = new Map<string, { product: string; size: string; units: number }>();
+      for (const m of data ?? []) {
+        const p = Array.isArray(m.product) ? m.product[0] : m.product;
+        const productName = (p as { name_en?: string } | null)?.name_en ?? '—';
+        const size = (p as { size?: string | null } | null)?.size ?? '';
+        const k = `${productName} ${size}`;
+        const cur = byProduct.get(k) ?? { product: productName, size, units: 0 };
+        cur.units += num(m.quantity);
+        byProduct.set(k, cur);
+      }
+      const rows: ReportRow[] = Array.from(byProduct.values())
+        .map((v) => ({ product: v.product, size: v.size || '—', units: v.units }))
+        .sort((a, b) => Number(b.units) - Number(a.units));
+
+      return {
+        key,
+        title,
+        columns: [
+          { key: 'product', label: c('product'), type: 'text' },
+          { key: 'size', label: c('size'), type: 'text' },
+          { key: 'units', label: c('units'), type: 'number' }
+        ],
+        rows,
+        totals: { product: t('suite.total'), size: '', units: rows.reduce((s, r) => s + Number(r.units), 0) }
+      };
+    }
+
+    // -------------------------------------------- orders placed & fulfilled
+    case 'orders-turnaround': {
+      const { data: orders } = await admin
+        .from('orders')
+        .select('id, order_no, ordered_at, items:order_items ( status )')
+        .gte('ordered_at', fromIso)
+        .lte('ordered_at', toIso);
+
+      const ids = (orders ?? []).map((o) => o.id);
+      const { data: cols } = ids.length
+        ? await admin.from('collections').select('order_id, collected_at').in('order_id', ids)
+        : { data: [] as { order_id: string; collected_at: string }[] };
+
+      const lastCollection = new Map<string, string>();
+      for (const cRow of cols ?? []) {
+        const prev = lastCollection.get(cRow.order_id);
+        if (!prev || cRow.collected_at > prev) lastCollection.set(cRow.order_id, cRow.collected_at);
+      }
+
+      const DAY = 86_400_000;
+      let fulfilledCount = 0;
+      let turnaroundSum = 0;
+      const rows: ReportRow[] = (orders ?? []).map((o) => {
+        const items = o.items ?? [];
+        const pending = items.some(
+          (it) => it.status !== null && ['ordered', 'in_production', 'ready'].includes(it.status)
+        );
+        const fulfilled = !pending;
+        const fulfilledAt = fulfilled ? lastCollection.get(o.id) ?? o.ordered_at : null;
+        let turnaround: number | null = null;
+        if (fulfilled && fulfilledAt) {
+          turnaround = Math.max(
+            0,
+            Math.round((new Date(fulfilledAt).getTime() - new Date(o.ordered_at).getTime()) / DAY)
+          );
+          fulfilledCount += 1;
+          turnaroundSum += turnaround;
+        }
+        return {
+          order: o.order_no,
+          placed: dayKey(o.ordered_at),
+          status: fulfilled ? t('suite.fulfilled') : t('suite.pending'),
+          fulfilled: fulfilledAt ? dayKey(fulfilledAt) : null,
+          turnaround
+        };
+      });
+
+      const avg = fulfilledCount ? Math.round((turnaroundSum / fulfilledCount) * 10) / 10 : null;
+      return {
+        key,
+        title,
+        columns: [
+          { key: 'order', label: c('order'), type: 'text' },
+          { key: 'placed', label: c('placed'), type: 'date' },
+          { key: 'status', label: c('statusCol'), type: 'text' },
+          { key: 'fulfilled', label: c('fulfilledOn'), type: 'date' },
+          { key: 'turnaround', label: c('turnaround'), type: 'number' }
+        ],
+        rows,
+        totals: {
+          order: t('suite.ordersSummary', { placed: rows.length, fulfilled: fulfilledCount }),
+          placed: '',
+          status: '',
+          fulfilled: t('suite.avgTurnaround'),
+          turnaround: avg
+        }
+      };
+    }
+
+    // -------------------------------------------------------- cancellations
+    case 'cancellations': {
+      const { data } = await admin
+        .from('order_items')
+        .select(
+          `line_total, refund_method, status_reason, cancelled_at, description,
+           order:orders!order_items_order_id_fkey ( order_no )`
+        )
+        .eq('status', 'cancelled')
+        .gte('cancelled_at', fromIso)
+        .lte('cancelled_at', toIso)
+        .order('cancelled_at', { ascending: true });
+
+      const rows: ReportRow[] = (data ?? []).map((c2) => {
+        const order = Array.isArray(c2.order) ? c2.order[0] : c2.order;
+        return {
+          order: (order as { order_no?: string } | null)?.order_no ?? '—',
+          item: c2.description,
+          reason: c2.status_reason ?? '—',
+          refundMethod: c2.refund_method ? methodLabel(c2.refund_method) : '—',
+          when: c2.cancelled_at,
+          amount: num(c2.line_total)
+        };
+      });
+
+      return {
+        key,
+        title,
+        columns: [
+          { key: 'order', label: c('order'), type: 'text' },
+          { key: 'item', label: c('item'), type: 'text' },
+          { key: 'reason', label: c('reason'), type: 'text' },
+          { key: 'refundMethod', label: c('refundMethod'), type: 'text' },
+          { key: 'when', label: c('when'), type: 'datetime' },
+          { key: 'amount', label: c('amount'), type: 'money' }
+        ],
+        rows,
+        totals: {
+          order: t('suite.total'),
+          item: '',
+          reason: '',
+          refundMethod: '',
+          when: '',
+          amount: rows.reduce((s, r) => s + Number(r.amount), 0)
+        }
+      };
+    }
+
+    // ---------------------------------------------------------------- audit
+    case 'audit': {
+      const { data } = await admin
+        .from('audit_log')
+        .select('created_at, actor_name, action, target_table, target_id, meta')
+        .gte('created_at', fromIso)
+        .lte('created_at', toIso)
+        .order('created_at', { ascending: false })
+        .limit(5000);
+
+      const rows: ReportRow[] = (data ?? []).map((a) => ({
+        when: a.created_at,
+        actor: a.actor_name ?? '—',
+        action: a.action,
+        target: [a.target_table, a.target_id].filter(Boolean).join(' ') || '—',
+        details: a.meta ? JSON.stringify(a.meta) : ''
+      }));
+
+      return {
+        key,
+        title,
+        columns: [
+          { key: 'when', label: c('when'), type: 'datetime' },
+          { key: 'actor', label: c('actor'), type: 'text' },
+          { key: 'action', label: c('action'), type: 'text' },
+          { key: 'target', label: c('target'), type: 'text' },
+          { key: 'details', label: c('details'), type: 'text' }
+        ],
+        rows
+      };
+    }
+  }
+}
+
+export type ReportExportResult =
+  | { ok: true; filename: string; base64: string }
+  | { ok: false; error: string };
+
+/** Exports a suite report to Excel: stamped (A-FR-12.5) and audited (A-FR-12.6). */
+export async function exportReportExcel(
+  key: ReportKey,
+  from: string,
+  to: string
+): Promise<ReportExportResult> {
+  const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthorized' };
+
+  const [result, stamp] = await Promise.all([getReport(key, from, to), reportStamp(from, to)]);
+  const workbook = buildGenericReportWorkbook(result, stamp, CURRENCY);
+
+  await logAudit({
+    actorId: user.id,
+    action: 'export_generated',
+    targetTable: 'audit_log',
+    newValue: { report: key, format: 'xlsx', from, to }
+  });
+
+  return {
+    ok: true,
+    filename: reportFilename(key, from, to),
+    base64: Buffer.from(workbookToUint8Array(workbook)).toString('base64')
+  };
+}
+
+/**
+ * Audits a PDF export (A-FR-12.6). The PDF itself is produced by the browser's
+ * print-to-PDF from the stamped print view, so there is no file to build here --
+ * only the audit row the acceptance requires for every export.
+ */
+export async function logReportPrint(
+  key: ReportKey,
+  from: string,
+  to: string
+): Promise<{ ok: boolean }> {
+  const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false };
+
+  await logAudit({
+    actorId: user.id,
+    action: 'export_generated',
+    targetTable: 'audit_log',
+    newValue: { report: key, format: 'pdf', from, to }
+  });
+  return { ok: true };
 }

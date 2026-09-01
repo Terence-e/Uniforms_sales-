@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { DuplicateStamp } from '@/components/receipt/duplicate-stamp';
 import { formatDate, formatDateTime, formatMoney, SCHOOL } from '@/lib/format';
+import { SchoolLogo } from '@/components/brand/school-logo';
 import type { OrderStatus, PaymentMethod } from '@/types/database.types';
 
 export type ReceiptData = {
@@ -129,9 +130,7 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
 
       <article className="receipt-sheet mx-auto max-w-xl rounded-lg border bg-white p-8 text-black shadow-sm">
         <header className="border-b pb-4 text-center">
-          <h1 className="text-lg font-bold uppercase tracking-wide">
-            {SCHOOL.name}
-          </h1>
+          <SchoolLogo size="lg" className="mx-auto" />
           {SCHOOL.address ? (
             <p className="text-xs text-neutral-600">{SCHOOL.address}</p>
           ) : null}
