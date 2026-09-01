@@ -31,13 +31,19 @@ export type StockMovementKind =
   | 'return'
   | 'adjustment'
   | 'collection'
-  | 'production';
+  | 'production'
+  /** The outgoing half of an exchange: leaves stock, but is not a sale. */
+  | 'exchange';
 export type AlterationStatus =
   | 'received'
   | 'in_progress'
   | 'ready'
   | 'returned'
   | 'cancelled';
+export type ReturnKind = 'return' | 'exchange';
+/** Declared by the seller, never assessed by the system (A-FR-8.9). */
+export type GarmentCondition = 'unworn' | 'worn';
+export type ReturnDirection = 'in' | 'out';
 export type OrderStatus =
   | 'ordered'
   | 'in_production'
@@ -390,6 +396,7 @@ export type Database = {
           quantity: number;
           sale_id: string | null;
           collection_id: string | null;
+          return_id: string | null;
           note: string | null;
           occurred_on: string | null;
           tailor_name: string | null;
@@ -404,6 +411,7 @@ export type Database = {
           quantity: number;
           sale_id?: string | null;
           collection_id?: string | null;
+          return_id?: string | null;
           note?: string | null;
           occurred_on?: string | null;
           tailor_name?: string | null;
@@ -418,6 +426,7 @@ export type Database = {
           quantity?: number;
           sale_id?: string | null;
           collection_id?: string | null;
+          return_id?: string | null;
           note?: string | null;
           occurred_on?: string | null;
           tailor_name?: string | null;
@@ -785,6 +794,130 @@ export type Database = {
         Update: { prefix?: string; year?: number; last_value?: number };
         Relationships: [];
       };
+      returns: {
+        Row: {
+          id: string;
+          return_no: string;
+          kind: ReturnKind;
+          sale_id: string;
+          reason: string;
+          condition: GarmentCondition;
+          refund_amount: number;
+          refund_method: PaymentMethod | null;
+          collected_amount: number;
+          collected_method: PaymentMethod | null;
+          returned_at: string;
+          notes: string | null;
+          signature_url: string | null;
+          seller_id: string;
+          recorded_by: string | null;
+          received_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        /**
+         * Insert exists for completeness only, and Update is deliberately
+         * empty. Nothing writes here from the client: record_return() is
+         * security definer and does all the writing, and RLS grants select
+         * alone. A return is a correction, and a correction that can itself be
+         * rewritten corrects nothing (A-FR-8.6).
+         */
+        Insert: {
+          id?: string;
+          return_no?: string;
+          kind: ReturnKind;
+          sale_id: string;
+          reason: string;
+          condition: GarmentCondition;
+          refund_amount?: number;
+          refund_method?: PaymentMethod | null;
+          collected_amount?: number;
+          collected_method?: PaymentMethod | null;
+          returned_at?: string;
+          notes?: string | null;
+          signature_url?: string | null;
+          seller_id: string;
+          recorded_by?: string | null;
+          received_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Record<never, never>;
+        Relationships: [
+          {
+            foreignKeyName: 'returns_sale_id_fkey';
+            columns: ['sale_id'];
+            referencedRelation: 'sales';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'returns_seller_id_fkey';
+            columns: ['seller_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'returns_recorded_by_fkey';
+            columns: ['recorded_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'returns_received_by_fkey';
+            columns: ['received_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      return_items: {
+        Row: {
+          id: string;
+          return_id: string;
+          direction: ReturnDirection;
+          /** Set on the way in, null on the way out. */
+          sale_item_id: string | null;
+          product_id: string;
+          description: string;
+          size: string | null;
+          unit_price: number;
+          quantity: number;
+          line_total: number;
+        };
+        Insert: {
+          id?: string;
+          return_id: string;
+          direction: ReturnDirection;
+          sale_item_id?: string | null;
+          product_id: string;
+          description: string;
+          size?: string | null;
+          unit_price: number;
+          quantity: number;
+          line_total: number;
+        };
+        Update: Record<never, never>;
+        Relationships: [
+          {
+            foreignKeyName: 'return_items_return_id_fkey';
+            columns: ['return_id'];
+            referencedRelation: 'returns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'return_items_sale_item_id_fkey';
+            columns: ['sale_item_id'];
+            referencedRelation: 'sale_items';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'return_items_product_id_fkey';
+            columns: ['product_id'];
+            referencedRelation: 'products';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: Record<never, never>;
     Functions: {
@@ -832,6 +965,32 @@ export type Database = {
         };
         Returns: string;
       };
+      record_return: {
+        Args: {
+          p_sale_id: string;
+          p_kind: ReturnKind;
+          p_reason: string;
+          p_condition: GarmentCondition;
+          p_in_items: Json;
+          p_out_items: Json;
+          /**
+           * Nullable: which one is needed depends on which way the money moved,
+           * and only the server knows that -- it prices the lines. It raises if
+           * the one it needs is missing.
+           */
+          p_refund_method: PaymentMethod | null;
+          p_collected_method: PaymentMethod | null;
+          p_received_by: string | null;
+          p_notes: string | null;
+          p_signature_url: string | null;
+        };
+        Returns: {
+          id: string;
+          return_no: string;
+          refund_amount: number;
+          collected_amount: number;
+        }[];
+      };
       record_production_batch: {
         Args: {
           p_lines: Json;
@@ -848,6 +1007,9 @@ export type Database = {
       stock_movement_kind: StockMovementKind;
       order_status: OrderStatus;
       alteration_status: AlterationStatus;
+      return_kind: ReturnKind;
+      garment_condition: GarmentCondition;
+      return_direction: ReturnDirection;
     };
     CompositeTypes: Record<never, never>;
   };
@@ -872,4 +1034,6 @@ export type OrderItem = Tables<'order_items'>;
 export type Alteration = Tables<'alterations'>;
 export type BugReport = Tables<'bug_reports'>;
 export type Collection = Tables<'collections'>;
+export type Return = Tables<'returns'>;
+export type ReturnItem = Tables<'return_items'>;
 export type CollectionItem = Tables<'collection_items'>;

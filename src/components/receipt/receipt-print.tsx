@@ -1,7 +1,7 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
-import { Printer, ArrowLeft, Copy } from 'lucide-react';
+import { Printer, ArrowLeft, Copy, RotateCcw } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { DuplicateStamp } from '@/components/receipt/duplicate-stamp';
@@ -89,6 +89,7 @@ export type ReceiptData = {
  */
 export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
   const t = useTranslations('Receipt');
+  const tReturns = useTranslations('Returns');
   const locale = useLocale();
   const { paper, choose } = usePaperSize();
   const isOrder = receipt.kind === 'order';
@@ -110,6 +111,18 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
         </Button>
         <div className="flex items-center gap-2">
           <PaperToggle paper={paper} onChange={choose} />
+          {/* Where a return starts. A return always references a sale
+              (A-FR-8.3), and the receipt in the seller's hand is the most
+              natural place to begin one from. Orders are collected, not
+              returned, so they do not get this. */}
+          {!isOrder ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/returns/new?sale=${receipt.record_id}`}>
+                <RotateCcw className="size-4" />
+                {tReturns('start')}
+              </Link>
+            </Button>
+          ) : null}
           {/* Offered only on an original. From a duplicate the link would just
               reload the same stamped sheet and log another reprint. */}
           {!receipt.duplicate ? (

@@ -24,6 +24,8 @@ export const L = {
   orderTitle: 'Commande / Order',
   orderCancelled: 'Commande annulée / Order cancelled',
   depositTitle: 'Bon de dépôt / Deposit slip',
+  returnTitle: 'Retour / Return',
+  exchangeTitle: 'Échange / Exchange',
   collectionTitle: 'Retiré / Collected',
 
   // ------------------------------------------------------------- references
@@ -31,11 +33,15 @@ export const L = {
   orderNo: 'N° commande / Order no',
   slipNo: 'N° bon / Slip no',
   colNo: 'N° retrait / Collection no',
+  returnNo: 'N° retour / Return no',
+  originalReceipt: 'Reçu d’origine / Original receipt',
   ordNo: 'N° commande / Order no',
 
   // ------------------------------------------------------------------ dates
   date: 'Date / Date',
   receivedAt: 'Reçu le / Received on',
+  returnedAt: 'Retourné le / Returned on',
+  soldOn: 'Vendu le / Sold on',
   collectedAt: 'Retiré le / Collected on',
   orderedAt: 'Commandé le / Ordered on',
   expectedReady: 'Prêt le / Ready by',
@@ -60,6 +66,12 @@ export const L = {
   garment: 'Vêtement / Garment',
   workRequired: 'Travaux demandés / Work required',
   measurements: 'Mesures / Measurements',
+  itemsBack: 'Articles rendus / Items returned',
+  itemsOut: 'Articles remis / Items given out',
+  reason: 'Motif / Reason',
+  condition: 'État déclaré / Declared condition',
+  conditionUnworn: 'Non porté / Unworn',
+  conditionWorn: 'Porté / Worn',
 
   // ------------------------------------------------------------------- money
   subtotal: 'Sous-total / Subtotal',
@@ -71,6 +83,12 @@ export const L = {
   paymentReference: 'Référence / Reference',
   dueOnReturn: 'À payer au retrait / Due on collection',
   paid: 'Payé / Paid',
+  refundedLabel: 'Remboursé / Refunded',
+  refundMethod: 'Mode de remboursement / Refund method',
+  collectedLabel: 'Encaissé / Collected',
+  collectedMethod: 'Mode d’encaissement / Collection method',
+  noMoneyMoved: 'Aucun mouvement d’argent · No money changed hands',
+  originalPayment: 'Paiement d’origine / Original payment',
   noCharge: 'Sans frais / No charge',
   alreadyPaid: 'Payé à la commande · Paid when ordered',
 
@@ -110,6 +128,10 @@ export const NOTICES = {
   deposit: {
     fr: 'L’école conserve le vêtement décrit ci-dessus. Merci de présenter ce bon lors du retrait.',
     en: 'The school is holding the garment described above. Please present this slip when collecting it.'
+  },
+  returned: {
+    fr: 'Ce document accompagne un retour ou un échange. La vente d’origine reste inchangée et conserve son propre reçu.',
+    en: 'This document accompanies a return or exchange. The original sale is unchanged and keeps its own receipt.'
   },
   collection: {
     fr: 'Ce bon atteste que les articles ci-dessus ont été remis.',
