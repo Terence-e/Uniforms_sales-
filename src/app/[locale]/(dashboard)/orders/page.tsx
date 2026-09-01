@@ -60,7 +60,12 @@ export default async function OrdersPage({ params }: Props) {
                       {order.order_no}
                     </Badge>
                     <Badge variant="outline" className="text-[0.7rem]">
-                      {t(`status.${order.status}`)}
+                      {/* deriveOrderStatus returns null when every line went
+                          home at the counter -- the order was never part of the
+                          workflow. Interpolating that gave `status.null`, which
+                          has no message and threw. It reads as collected, which
+                          is what the receipt has always printed for this case. */}
+                      {t(`status.${order.status ?? 'collected'}`)}
                     </Badge>
                   </div>
                   {order.expected_ready_date ? (

@@ -68,6 +68,13 @@ export default async function ReturnsPage({ params }: Props) {
                         <Badge variant={row.kind === 'exchange' ? 'default' : 'secondary'}>
                           {t(`kinds.${row.kind}`)}
                         </Badge>
+                        {/* A-FR-8.12 enforces the policy by visibility. The
+                            ledger is where "how often is this happening" gets
+                            asked, so an override is marked here rather than
+                            only in the audit log. */}
+                        {row.within_policy === false ? (
+                          <Badge variant="destructive">{t('outOfPolicy')}</Badge>
+                        ) : null}
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {formatDateTime(row.returned_at, locale)}
