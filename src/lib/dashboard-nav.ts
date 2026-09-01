@@ -43,7 +43,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { key: 'alterations', href: '/alterations', icon: Scissors, section: 'operations', roles: ALL },
   { key: 'production', href: '/stock', icon: Boxes, section: 'operations', roles: ALL },
   { key: 'returns', href: '/returns', icon: RefreshCcw, section: 'operations', roles: OPERATORS },
-  { key: 'cancellations', icon: Ban, section: 'operations', roles: OPERATORS },
+  { key: 'cancellations', href: '/cancellations', icon: Ban, section: 'operations', roles: OPERATORS },
 
   { key: 'receipts', icon: Receipt, section: 'records', roles: ALL },
   { key: 'reports', href: '/reports', icon: BarChart3, section: 'records', roles: ALL },

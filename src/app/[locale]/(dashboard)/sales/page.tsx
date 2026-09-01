@@ -66,9 +66,16 @@ export default async function SalesPage({ params }: Props) {
                   <p className="text-xs text-muted-foreground">
                     {formatDateTime(sale.sold_at, locale)}
                   </p>
-                  <Badge variant="secondary" className="mt-1 font-mono text-[0.7rem]">
-                    {sale.receipt_no}
-                  </Badge>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <Badge variant="secondary" className="font-mono text-[0.7rem]">
+                      {sale.receipt_no}
+                    </Badge>
+                    {sale.cancelled_at ? (
+                      <Badge variant="destructive" className="text-[0.7rem]">
+                        {t('cancelledBadge')}
+                      </Badge>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <span className="tabular-nums text-sm font-medium">

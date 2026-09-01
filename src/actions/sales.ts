@@ -300,18 +300,20 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
 
 // ------------------------------------------------------------------ queries
 
-/** Rows for the "recent sales" list beside the entry form. */
+/** Rows for the "recent sales" list beside the entry form. Cancelled sales stay
+ * in the list (marked, never hidden) -- `cancelled_at` drives the badge. */
 export async function listRecentSales(limit = 10) {
   const supabase = await createClient();
   const { data } = await supabase
     .from('sales')
-    .select('id, receipt_no, sold_at, customer_name, total, payment_method')
+    .select('id, receipt_no, sold_at, customer_name, total, payment_method, cancelled_at')
     .order('sold_at', { ascending: false })
     .limit(limit);
   return data ?? [];
 }
 
-/** A single sale with its lines and seller, for the receipt page. */
+/** A single sale with its lines and seller, for the receipt page. Includes the
+ * cancellation fields so the sheet can show it was cancelled, why, and by whom. */
 export async function getSaleWithItems(saleId: string) {
   const supabase = await createClient();
   const { data } = await supabase
@@ -319,15 +321,74 @@ export async function getSaleWithItems(saleId: string) {
     .select(
       `id, receipt_no, sold_at, customer_name, student_name, class_level, phone,
        payment_method, payment_reference, subtotal, discount, discount_reason, total, notes,
-       signature_url,
+       signature_url, cancelled_at, cancel_reason,
        seller:profiles!sales_seller_id_fkey ( full_name ),
        recordedBy:profiles!sales_recorded_by_fkey ( full_name ),
        receivedBy:profiles!sales_received_by_fkey ( full_name ),
+       cancelledBy:profiles!sales_cancelled_by_fkey ( full_name ),
        items:sale_items ( id, description, size, unit_price, quantity, line_total )`
     )
     .eq('id', saleId)
     .single();
   return data;
+}
+
+export type CancelSaleResult =
+  | { ok: true; receiptNo: string }
+  | { ok: false; error: string };
+
+/**
+ * Cancels a sale (A-FR-6.9). All the work -- the reason, the stock reversal, the
+ * audit row -- happens inside cancel_sale() in one transaction, and the function
+ * refuses the call unless the caller can operate (Administration cannot). The
+ * sale is never edited or deleted; it stays visible, now marked Cancelled.
+ */
+export async function cancelSale(saleId: string, reason: string): Promise<CancelSaleResult> {
+  if (!reason || reason.trim().length < 3) return { ok: false, error: 'reasonRequired' };
+
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .rpc('cancel_sale', { p_sale_id: saleId, p_reason: reason.trim() })
+      .single();
+
+    if (error || !data) return { ok: false, error: error?.message ?? 'cancelFailed' };
+
+    revalidatePath('/cancellations', 'page');
+    revalidatePath('/sales', 'page');
+    revalidatePath(`/sales/${saleId}/receipt`, 'page');
+    return { ok: true, receiptNo: data.receipt_no };
+  } catch (e) {
+    // Never let the action throw a 500 back to the client -- a thrown Server
+    // Action surfaces as "an unexpected response", with no reason the user can act
+    // on. Turn it into a message instead.
+    return { ok: false, error: e instanceof Error ? e.message : 'cancelFailed' };
+  }
+}
+
+/** Recent live sales (cancellable) and recent cancelled sales, for the
+ * cancellations screen. Sales are shared, so every role reads the same set. */
+export async function listCancellations(limit = 20) {
+  const supabase = await createClient();
+  const [liveRes, cancelledRes] = await Promise.all([
+    supabase
+      .from('sales')
+      .select('id, receipt_no, sold_at, customer_name, total')
+      .is('cancelled_at', null)
+      .order('sold_at', { ascending: false })
+      .limit(limit),
+    supabase
+      .from('sales')
+      .select(
+        `id, receipt_no, sold_at, customer_name, total, cancelled_at, cancel_reason,
+         cancelledBy:profiles!sales_cancelled_by_fkey ( full_name )`
+      )
+      .not('cancelled_at', 'is', null)
+      .order('cancelled_at', { ascending: false })
+      .limit(limit)
+  ]);
+
+  return { live: liveRes.data ?? [], cancelled: cancelledRes.data ?? [] };
 }
 
 // ------------------------------------------------------------------ export
@@ -366,6 +427,9 @@ export async function exportSalesToExcel(
     )
     .gte('sold_at', fromIso)
     .lte('sold_at', toIso)
+    // A cancelled sale is not revenue (A-FR-6.9); it appears in the
+    // cancellations report, never in the sales export.
+    .is('cancelled_at', null)
     .order('sold_at', { ascending: true });
 
   if (error) return { ok: false, error: error.message };
@@ -419,7 +483,8 @@ export async function getSalesSummary(from: string, to: string) {
     .from('sales')
     .select('total')
     .gte('sold_at', new Date(`${from}T00:00:00`).toISOString())
-    .lte('sold_at', new Date(`${to}T23:59:59.999`).toISOString());
+    .lte('sold_at', new Date(`${to}T23:59:59.999`).toISOString())
+    .is('cancelled_at', null);
 
   const rows = data ?? [];
   return {
@@ -445,7 +510,8 @@ export async function getMonthlySales(months = 8) {
   const { data } = await supabase
     .from('sales')
     .select('sold_at, total')
-    .gte('sold_at', start.toISOString());
+    .gte('sold_at', start.toISOString())
+    .is('cancelled_at', null);
 
   const buckets = new Map<string, { total: number; count: number }>();
   for (let i = 0; i < months; i++) {
