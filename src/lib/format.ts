@@ -55,8 +55,9 @@ export const SCHOOL = {
   address: process.env.NEXT_PUBLIC_SCHOOL_ADDRESS || '',
   phone: process.env.NEXT_PUBLIC_SCHOOL_PHONE || '',
   /**
-   * A-FR-7.8. The school's logo now ships at public/logo.png, so it prints on
-   * every document by default; override with NEXT_PUBLIC_SCHOOL_LOGO if needed.
+   * Optional (A-FR-7.8). No logo ships with the repo, and a receipt printing a
+   * broken image is worse than one printing the school's name alone -- so this
+   * is empty until someone drops a file in public/ and points this at it.
    */
-  logo: process.env.NEXT_PUBLIC_SCHOOL_LOGO || '/logo.png'
+  logo: process.env.NEXT_PUBLIC_SCHOOL_LOGO || ''
 };
