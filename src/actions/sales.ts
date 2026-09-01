@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { logAudit } from '@/lib/audit';
-import { reservedByProduct } from '@/actions/stock';
+import { deductStockForSale, reservedByProduct } from '@/actions/stock';
 import {
   computeLineTotal,
   computeTotals,
@@ -193,6 +193,36 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
     return { ok: false, error: itemsError.message };
   }
 
+  /*
+   * Stock comes down (A-FR-5.4).
+   *
+   * Wired in now because returns put stock back: a ledger that credits a
+   * returned garment while never having debited the sale counts every return
+   * as a gain, and the balance drifts upward with every wrong size the shop
+   * takes back. One-sided is worse than either direction alone.
+   *
+   * Deliberately AFTER the lines are safely in and deliberately not fatal. The
+   * sale is real money that has already changed hands; refusing to acknowledge
+   * it because a stock row would not write would be the wrong trade. A movement
+   * that fails leaves the balance stale, which a stocktake corrects -- a sale
+   * that fails leaves a parent holding goods the shop has no record of.
+   */
+  const stock = await deductStockForSale(
+    inserted.id,
+    sale.items.map((item) => ({ productId: item.productId, quantity: item.quantity }))
+  );
+  if (!stock.ok) {
+    console.error('sale recorded but stock not deducted', inserted.receipt_no, stock);
+    await logAudit({
+      actorId: user.id,
+      action: 'sale_stock_not_deducted',
+      entity: inserted.receipt_no,
+      targetTable: 'sales',
+      targetId: inserted.id,
+      meta: { receipt_no: inserted.receipt_no }
+    });
+  }
+
   // Audited (A-FR-11.1). Records the receipt, totals and line count -- enough to
   // reconstruct what was sold without duplicating the whole basket.
   await logAudit({
@@ -288,7 +318,7 @@ export async function getSaleWithItems(saleId: string) {
     .from('sales')
     .select(
       `id, receipt_no, sold_at, customer_name, student_name, class_level, phone,
-       payment_method, payment_reference, subtotal, discount, total, notes,
+       payment_method, payment_reference, subtotal, discount, discount_reason, total, notes,
        signature_url,
        seller:profiles!sales_seller_id_fkey ( full_name ),
        recordedBy:profiles!sales_recorded_by_fkey ( full_name ),

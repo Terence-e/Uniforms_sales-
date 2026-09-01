@@ -18,13 +18,14 @@ import { logAudit } from '@/lib/audit';
  * duplicate on screen, and an audit trail that under-reports is worse than one
  * that repeats.
  */
-export type ReprintKind = 'sale' | 'order' | 'collection' | 'alteration';
+export type ReprintKind = 'sale' | 'order' | 'collection' | 'alteration' | 'return';
 
 const TARGET_TABLE: Record<ReprintKind, string> = {
   sale: 'sales',
   order: 'orders',
   collection: 'collections',
-  alteration: 'alterations'
+  alteration: 'alterations',
+  return: 'returns'
 };
 
 export async function logReprint(params: {

@@ -1,4 +1,4 @@
--- Rollback for 20260101001500_document_references.sql.
+-- Rollback for 20260101002700_document_references.sql.
 --
 -- MANUAL ONLY -- apply by hand (psql or the SQL editor), never with `db push`
 -- or `db reset`. See supabase/README.md.

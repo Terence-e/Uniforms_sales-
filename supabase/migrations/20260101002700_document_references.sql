@@ -1,3 +1,17 @@
+-- RENUMBERED from 20260101001500.
+--
+-- It collided with 20260101001500_audit_log_expand.sql. The CLI keys applied
+-- migrations by version alone, and schema_migrations has version as its primary
+-- key -- so the second file at a shared version can never be recorded, and
+-- every `supabase db push` fails on it with a duplicate-key error. That blocked
+-- insert_only_grants behind it.
+--
+-- Moved to a free version rather than merged into audit_log_expand: the two are
+-- unrelated changes and each has its own down-migration. The DDL below is
+-- idempotent (create or replace / set default / drop if exists), so re-running
+-- it against a database that already has it applied is safe -- which is what
+-- made the renumber possible without a reset.
+
 -- Human document references, genuinely gap-free (A-FR-9.2 and the numbering rule).
 --
 -- Every document -- sale, order, collection, and the alteration/return slips to
