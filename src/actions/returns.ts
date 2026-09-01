@@ -25,6 +25,9 @@ export type RecordReturnResult =
       refundAmount: number;
       /** What the parent pays when the new garment costs more. Zero otherwise. */
       collectedAmount: number;
+      /** False when the seller overrode the window (A-FR-8.11). */
+      withinPolicy: boolean;
+      elapsedDays: number;
     }
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
@@ -66,7 +69,8 @@ export async function recordReturn(input: ReturnInput): Promise<RecordReturnResu
       p_collected_method: value.collectedMethod,
       p_received_by: value.receivedBy,
       p_notes: value.notes,
-      p_signature_url: null
+      p_signature_url: null,
+      p_override_reason: value.overrideReason
     })
     .single();
 
@@ -78,6 +82,8 @@ export async function recordReturn(input: ReturnInput): Promise<RecordReturnResu
     return_no: string;
     refund_amount: number;
     collected_amount: number;
+    within_policy: boolean;
+    elapsed_days: number;
   };
 
   revalidatePath('/returns', 'page');
@@ -86,13 +92,17 @@ export async function recordReturn(input: ReturnInput): Promise<RecordReturnResu
   revalidatePath(`/sales/${value.saleId}/receipt`, 'page');
   revalidatePath('/sales', 'page');
   revalidatePath('/stock', 'page');
+  // An override is an audited decision, so the audit screen has new rows.
+  if (!row.within_policy) revalidatePath('/audit', 'page');
 
   return {
     ok: true,
     returnId: row.id,
     returnNo: row.return_no,
     refundAmount: Number(row.refund_amount),
-    collectedAmount: Number(row.collected_amount)
+    collectedAmount: Number(row.collected_amount),
+    withinPolicy: row.within_policy,
+    elapsedDays: Number(row.elapsed_days)
   };
 }
 
@@ -151,7 +161,9 @@ export async function listReturnsForSale(saleId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from('returns')
-    .select('id, return_no, kind, returned_at, reason, refund_amount, collected_amount')
+    .select(
+      'id, return_no, kind, returned_at, reason, refund_amount, collected_amount, within_policy'
+    )
     .eq('sale_id', saleId)
     .order('returned_at', { ascending: false });
   return data ?? [];
@@ -164,6 +176,7 @@ export async function listReturns() {
     .from('returns')
     .select(
       `id, return_no, kind, returned_at, reason, condition,
+       elapsed_days, within_policy, override_reason,
        refund_amount, refund_method, collected_amount, collected_method,
        sale:sales!returns_sale_id_fkey ( id, receipt_no, customer_name ),
        seller:profiles!returns_seller_id_fkey ( full_name )`
@@ -180,6 +193,7 @@ export async function getReturnWithItems(returnId: string) {
     .from('returns')
     .select(
       `id, return_no, kind, returned_at, reason, condition, notes,
+       elapsed_days, policy_window_days, within_policy, override_reason,
        refund_amount, refund_method, collected_amount, collected_method,
        signature_url,
        sale:sales!returns_sale_id_fkey (

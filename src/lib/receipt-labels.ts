@@ -72,6 +72,11 @@ export const L = {
   condition: 'État déclaré / Declared condition',
   conditionUnworn: 'Non porté / Unworn',
   conditionWorn: 'Porté / Worn',
+  elapsedDays: 'Délai écoulé / Elapsed',
+  policy: 'Politique / Policy',
+  withinPolicy: 'Dans les délais · Within policy',
+  outOfPolicy: 'Hors délais — dérogation · Outside policy — override',
+  overrideReason: 'Motif de la dérogation / Override reason',
 
   // ------------------------------------------------------------------- money
   subtotal: 'Sous-total / Subtotal',

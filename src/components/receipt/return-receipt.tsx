@@ -25,6 +25,16 @@ export type ReturnReceiptData = {
   returned_at: string;
   reason: string;
   condition: GarmentCondition;
+  /**
+   * A-FR-8.14: the receipt prints the condition declared, the days elapsed, and
+   * whether it was within policy or an override. Nullable for the returns
+   * recorded before the policy engine existed -- those rows have no verdict,
+   * and printing an invented one would be a guess presented as fact.
+   */
+  elapsed_days: number | null;
+  policy_window_days: number | null;
+  within_policy: boolean | null;
+  override_reason: string | null;
   notes: string | null;
   refund_amount: number;
   refund_method: PaymentMethod | null;
@@ -139,6 +149,18 @@ export function ReturnReceipt({ receipt }: { receipt: ReturnReceiptData }) {
               receipt.condition === 'worn' ? L.conditionWorn : L.conditionUnworn
             }
           />
+          {receipt.elapsed_days !== null ? (
+            <Meta
+              label={L.elapsedDays}
+              value={t('daysValue', { days: receipt.elapsed_days })}
+            />
+          ) : null}
+          {receipt.within_policy !== null ? (
+            <Meta
+              label={L.policy}
+              value={receipt.within_policy ? L.withinPolicy : L.outOfPolicy}
+            />
+          ) : null}
           <Meta
             label={L.recordedBy}
             value={receipt.recorded_by_name || receipt.seller_name}
@@ -198,6 +220,20 @@ export function ReturnReceipt({ receipt }: { receipt: ReturnReceiptData }) {
           <span className="text-neutral-600">{L.reason}: </span>
           {receipt.reason}
         </p>
+
+        {/* An override is printed on the parent's own copy, boxed, not buried.
+            A-FR-8.12 enforces the policy by visibility -- and the person most
+            entitled to see that an exception was made for them is the person it
+            was made for. */}
+        {receipt.within_policy === false && receipt.override_reason ? (
+          <div className="avoid-break mt-2 border-2 border-black px-2 py-1.5">
+            <p className="text-[0.65rem] font-bold uppercase">{L.outOfPolicy}</p>
+            <p className="text-xs">
+              <span className="text-neutral-600">{L.overrideReason}: </span>
+              {receipt.override_reason}
+            </p>
+          </div>
+        ) : null}
 
         {receipt.notes ? (
           <p className="mt-2 text-xs text-neutral-600">{receipt.notes}</p>

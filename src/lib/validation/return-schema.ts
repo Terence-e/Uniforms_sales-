@@ -70,6 +70,16 @@ export const returnSchema = z
      */
     refundMethod: z.enum(PAYMENT_METHODS).nullable().default(null),
     collectedMethod: z.enum(PAYMENT_METHODS).nullable().default(null),
+    /**
+     * Required only when the verdict says out of policy (A-FR-8.11), which the
+     * form knows before submitting because the banner already told the seller.
+     *
+     * Deliberately separate from `reason`, which every return carries. Reusing
+     * that field would make an override indistinguishable from an ordinary
+     * explanation, and the out-of-policy report needs to count exactly the
+     * overrides. The database enforces the same rule independently.
+     */
+    overrideReason: z.string().trim().max(500).nullable().default(null),
     receivedBy: z.uuid().nullable().default(null),
     notes: z.string().trim().max(500).nullable().default(null)
   })

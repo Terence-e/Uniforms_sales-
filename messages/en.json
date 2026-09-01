@@ -258,6 +258,10 @@
       "super_admin": "Everything — plus the accounts, catalogue and prices no one else may touch."
     },
     "modules": {
+      "settings": {
+        "title": "Settings",
+        "desc": "Return windows and other values the school can change itself."
+      },
       "sales": { "title": "Sales (till)", "desc": "Record a uniform sale and print the receipt." },
       "orders": { "title": "Orders", "desc": "Take an order paid up front, collected later." },
       "alterations": {"title": "Alterations", "desc": "Garments brought in by parents to be resized or repaired."},
@@ -556,7 +560,54 @@
     "previous": "Collections",
     "viewSlip": "View slip"
   },
+  "Settings": {
+    "title": "Settings",
+    "subtitle": "Values the school can change without a new deployment.",
+    "returnPolicy": "Return and exchange windows",
+    "returnPolicyHelp": "How long after a sale each kind of return stays within policy. Nothing here ever blocks a return — outside these windows the seller is warned and must record a reason.",
+    "notRetroactive": "Changing a window does not reclassify returns already recorded. Each one keeps the verdict it was given at the time.",
+    "kinds": {
+      "return": "Refund",
+      "exchange": "Exchange"
+    },
+    "conditions": {
+      "unworn": "Unworn",
+      "worn": "Worn"
+    },
+    "hints": {
+      "exchange_unworn": "The school's stated rule: 3 months.",
+      "exchange_worn": "The school's stated rule: 1 week.",
+      "return_unworn": "Proposed default, pending confirmation.",
+      "return_worn": "Proposed default, pending confirmation: not permitted."
+    },
+    "windowDays": "Days",
+    "permitted": "Permitted",
+    "notPermitted": "Not permitted",
+    "aboutMonths": "about {count} months",
+    "aboutWeeks": "about {count} weeks",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Policy updated",
+    "errorTooLong": "That window is longer than 10 years. Check the number.",
+    "errorInvalid": "Enter a whole number of days.",
+    "errorUnauthorized": "Only the Super Admin can change the policy.",
+    "errorGeneric": "The policy could not be updated. Nothing was changed."
+  },
   "Returns": {
+    "soldDaysAgo": "Sold {days} days ago.",
+    "verdictAllowed": "{condition}: {kind} allowed, within the {window}-day window.",
+    "verdictOutside": "{condition}: {kind} is outside the {window}-day window.",
+    "verdictNotPermitted": "{condition}: {kind} is not permitted under the current policy.",
+    "overrideAllowed": "You can still proceed — give a reason below and it will be recorded as an override.",
+    "overrideReason": "Reason for going outside policy",
+    "overrideReasonPlaceholder": "Manufacturing defect, decision by the founder…",
+    "overrideReasonHint": "Recorded separately from the reason above, attributed to you, and flagged for the administration.",
+    "kindsShort": {
+      "return": "refund",
+      "exchange": "exchange"
+    },
+    "outOfPolicy": "Override",
+    "daysValue": "{days} days",
     "title": "Returns & exchanges",
     "subtitle": "A wrong size is the shop's problem to solve. Every return references its original sale, which is never changed.",
     "ledger": "Recorded returns",

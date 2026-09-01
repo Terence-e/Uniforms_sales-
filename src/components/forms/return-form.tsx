@@ -17,6 +17,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { recordReturn } from '@/actions/returns';
+import type { Verdict } from '@/actions/return-policy';
 import { formatMoney } from '@/lib/format';
 import { withSaveDeadline } from '@/lib/save-outcome';
 import { PAYMENT_METHODS } from '@/lib/validation/sale-schema';
@@ -70,7 +71,8 @@ export function ReturnForm({
   lines,
   products,
   staff,
-  currentUserId
+  currentUserId,
+  verdicts
 }: {
   saleId: string;
   receiptNo: string;
@@ -78,6 +80,15 @@ export function ReturnForm({
   products: Product[];
   staff: { id: string; full_name: string }[];
   currentUserId: string;
+  /**
+   * All four combinations, keyed `${kind}:${condition}`, resolved on the server
+   * before this page rendered (A-FR-8.10).
+   *
+   * Fetched up front rather than per toggle so the banner answers the instant
+   * the seller changes the type or the condition. A verdict that arrives after
+   * they have moved on is not one shown "before anything is entered".
+   */
+  verdicts: Record<string, Verdict>;
 }) {
   const t = useTranslations('Returns');
   const tSales = useTranslations('Sales');
@@ -92,10 +103,16 @@ export function ReturnForm({
   const [refundMethod, setRefundMethod] = useState<string>('cash');
   const [collectedMethod, setCollectedMethod] = useState<string>('cash');
   const [error, setError] = useState<string | null>(null);
+  const [overrideReason, setOverrideReason] = useState('');
 
   /** saleItemId -> quantity coming back. Absent or zero means not selected. */
   const [returning, setReturning] = useState<Record<string, number>>({});
   const [outgoing, setOutgoing] = useState<OutgoingLine[]>([]);
+
+  // The verdict for what the seller currently has selected. Recomputed on every
+  // render from data already in the browser, so it never lags the control.
+  const verdict = verdicts[`${kind}:${condition}`] ?? null;
+  const outOfPolicy = verdict ? !verdict.withinPolicy : false;
 
   const returnable = lines.filter((line) => line.returnable > 0);
 
@@ -126,7 +143,10 @@ export function ReturnForm({
   const canSubmit =
     linesChosen > 0
     && reason.trim().length >= 3
-    && (kind === 'return' || outgoing.some((line) => line.productId && line.quantity > 0));
+    && (kind === 'return' || outgoing.some((line) => line.productId && line.quantity > 0))
+    // Out of policy warns and demands an explanation -- it never blocks
+    // (A-FR-8.11). What is blocked is submitting the override SILENTLY.
+    && (!outOfPolicy || overrideReason.trim().length >= 3);
 
   function setQuantity(line: SaleLine, raw: number) {
     // Clamped to what is still returnable. The database enforces the same limit
@@ -160,7 +180,8 @@ export function ReturnForm({
           refundMethod: refundMethod as never,
           collectedMethod: collectedMethod as never,
           receivedBy,
-          notes: notes.trim() || null
+          notes: notes.trim() || null,
+          overrideReason: outOfPolicy ? overrideReason.trim() : null
         })
       );
 
@@ -203,6 +224,49 @@ export function ReturnForm({
             {t('errorTitle')}
           </p>
           <p className="text-sm">{error}</p>
+        </div>
+      ) : null}
+
+      {/* A-FR-8.10: the verdict comes BEFORE the form, not after submitting it.
+          "Sold 47 days ago. Unworn: exchange allowed, refund outside window."
+          The seller sees where they stand before starting, not after. */}
+      {verdict ? (
+        <div
+          role="status"
+          className={
+            outOfPolicy
+              ? 'space-y-2 rounded-lg border-2 border-amber-500 bg-amber-50 p-4 dark:bg-amber-950/30'
+              : 'space-y-1 rounded-lg border bg-muted/40 p-4'
+          }
+        >
+          <p className="flex items-center gap-2 font-semibold">
+            {outOfPolicy ? <TriangleAlert className="size-4 shrink-0" /> : null}
+            {t('soldDaysAgo', { days: verdict.elapsedDays })}
+          </p>
+          <p className="text-sm">
+            {outOfPolicy
+              ? verdict.windowDays === null
+                ? t('verdictNotPermitted', {
+                    kind: t(`kindsShort.${kind}`),
+                    condition: t(`conditions.${condition}`)
+                  })
+                : t('verdictOutside', {
+                    kind: t(`kindsShort.${kind}`),
+                    condition: t(`conditions.${condition}`),
+                    window: verdict.windowDays
+                  })
+              : t('verdictAllowed', {
+                  kind: t(`kindsShort.${kind}`),
+                  condition: t(`conditions.${condition}`),
+                  window: verdict.windowDays ?? 0
+                })}
+          </p>
+          {/* Never "you cannot". The policy is enforced by visibility, not by
+              refusal -- blocking would push the transaction onto paper, which
+              costs the school more than the override does (A-FR-8.11). */}
+          {outOfPolicy ? (
+            <p className="text-sm font-medium">{t('overrideAllowed')}</p>
+          ) : null}
         </div>
       ) : null}
 
@@ -479,6 +543,26 @@ export function ReturnForm({
             />
             <p className="text-xs text-muted-foreground">{t('reasonHint')}</p>
           </div>
+
+          {outOfPolicy ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="overrideReason" className="text-amber-700 dark:text-amber-500">
+                {t('overrideReason')}
+              </Label>
+              <Input
+                id="overrideReason"
+                value={overrideReason}
+                onChange={(event) => setOverrideReason(event.target.value)}
+                placeholder={t('overrideReasonPlaceholder')}
+                maxLength={500}
+              />
+              {/* Separate from the ordinary reason above, and required only
+                  here. Reusing that field would make an override
+                  indistinguishable from an ordinary explanation, and the
+                  out-of-policy report has to count exactly the overrides. */}
+              <p className="text-xs text-muted-foreground">{t('overrideReasonHint')}</p>
+            </div>
+          ) : null}
 
           <div className="space-y-1.5">
             <Label>{t('receivedBy')}</Label>

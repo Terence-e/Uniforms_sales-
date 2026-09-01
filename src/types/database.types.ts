@@ -807,6 +807,11 @@ export type Database = {
           collected_amount: number;
           collected_method: PaymentMethod | null;
           returned_at: string;
+          /** Stamped at record time, never recomputed: the windows are editable. */
+          elapsed_days: number | null;
+          policy_window_days: number | null;
+          within_policy: boolean | null;
+          override_reason: string | null;
           notes: string | null;
           signature_url: string | null;
           seller_id: string;
@@ -918,6 +923,30 @@ export type Database = {
           }
         ];
       };
+      return_policy: {
+        Row: {
+          kind: ReturnKind;
+          condition: GarmentCondition;
+          /** null means never within policy -- distinct from 0, "same day only". */
+          window_days: number | null;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        /** Insert and delete are refused by a trigger: the four rows are fixed. */
+        Insert: Record<never, never>;
+        Update: {
+          window_days?: number | null;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'return_policy_updated_by_fkey';
+            columns: ['updated_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: Record<never, never>;
     Functions: {
@@ -982,12 +1011,33 @@ export type Database = {
           p_received_by: string | null;
           p_notes: string | null;
           p_signature_url: string | null;
+          /**
+           * Required only when the verdict is out of policy (A-FR-8.11). The
+           * function raises if it is missing then, and ignores it otherwise.
+           */
+          p_override_reason: string | null;
         };
         Returns: {
           id: string;
           return_no: string;
           refund_amount: number;
           collected_amount: number;
+          within_policy: boolean;
+          elapsed_days: number;
+        }[];
+      };
+      /** The policy verdict, shared by the banner and by record_return. */
+      return_policy_verdict: {
+        Args: {
+          p_sold_at: string;
+          p_kind: ReturnKind;
+          p_condition: GarmentCondition;
+        };
+        Returns: {
+          elapsed_days: number;
+          /** null means the combination is never within policy. */
+          window_days: number | null;
+          within_policy: boolean;
         }[];
       };
       record_production_batch: {
@@ -1064,4 +1114,5 @@ export type BugReport = Tables<'bug_reports'>;
 export type Collection = Tables<'collections'>;
 export type Return = Tables<'returns'>;
 export type ReturnItem = Tables<'return_items'>;
+export type ReturnPolicy = Tables<'return_policy'>;
 export type CollectionItem = Tables<'collection_items'>;

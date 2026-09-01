@@ -258,6 +258,10 @@
       "super_admin": "Tout \u2014 y compris les comptes, le catalogue et les prix auxquels personne d'autre ne touche."
     },
     "modules": {
+      "settings": {
+        "title": "Paramètres",
+        "desc": "Délais de retour et autres valeurs modifiables par l'école."
+      },
       "sales": { "title": "Ventes (caisse)", "desc": "Enregistrer une vente d'uniforme et imprimer le re\u00e7u." },
       "orders": { "title": "Commandes", "desc": "Prendre une commande pay\u00e9e d'avance, retir\u00e9e plus tard." },
       "alterations": {"title": "Retouches", "desc": "Vêtements confiés par les parents à retoucher ou réparer."},
@@ -556,7 +560,54 @@
     "previous": "Retraits",
     "viewSlip": "Voir le bon"
   },
+  "Settings": {
+    "title": "Paramètres",
+    "subtitle": "Valeurs que l'école peut modifier sans nouveau déploiement.",
+    "returnPolicy": "Délais de retour et d'échange",
+    "returnPolicyHelp": "Combien de temps après une vente chaque type de retour reste dans les délais. Rien ici ne bloque jamais un retour — hors délai, le vendeur est averti et doit enregistrer un motif.",
+    "notRetroactive": "Modifier un délai ne reclasse pas les retours déjà enregistrés. Chacun conserve le verdict qui lui a été donné.",
+    "kinds": {
+      "return": "Remboursement",
+      "exchange": "Échange"
+    },
+    "conditions": {
+      "unworn": "Non porté",
+      "worn": "Porté"
+    },
+    "hints": {
+      "exchange_unworn": "Règle énoncée par l'école : 3 mois.",
+      "exchange_worn": "Règle énoncée par l'école : 1 semaine.",
+      "return_unworn": "Valeur par défaut proposée, à confirmer.",
+      "return_worn": "Valeur par défaut proposée, à confirmer : non autorisé."
+    },
+    "windowDays": "Jours",
+    "permitted": "Autorisé",
+    "notPermitted": "Non autorisé",
+    "aboutMonths": "environ {count} mois",
+    "aboutWeeks": "environ {count} semaines",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Politique mise à jour",
+    "errorTooLong": "Ce délai dépasse 10 ans. Vérifiez le nombre.",
+    "errorInvalid": "Saisissez un nombre entier de jours.",
+    "errorUnauthorized": "Seul le Super Admin peut modifier la politique.",
+    "errorGeneric": "La politique n'a pas pu être mise à jour. Rien n'a été modifié."
+  },
   "Returns": {
+    "soldDaysAgo": "Vendu il y a {days} jours.",
+    "verdictAllowed": "{condition} : {kind} autorisé, dans le délai de {window} jours.",
+    "verdictOutside": "{condition} : {kind} hors du délai de {window} jours.",
+    "verdictNotPermitted": "{condition} : {kind} non autorisé selon la politique actuelle.",
+    "overrideAllowed": "Vous pouvez tout de même continuer — indiquez un motif ci-dessous, il sera enregistré comme dérogation.",
+    "overrideReason": "Motif de la dérogation",
+    "overrideReasonPlaceholder": "Défaut de fabrication, décision du fondateur…",
+    "overrideReasonHint": "Enregistré séparément du motif ci-dessus, à votre nom, et signalé à l'administration.",
+    "kindsShort": {
+      "return": "remboursement",
+      "exchange": "échange"
+    },
+    "outOfPolicy": "Dérogation",
+    "daysValue": "{days} jours",
     "title": "Retours et échanges",
     "subtitle": "Une mauvaise taille, c'est à l'école de la régler. Chaque retour référence sa vente d'origine, qui n'est jamais modifiée.",
     "ledger": "Retours enregistrés",

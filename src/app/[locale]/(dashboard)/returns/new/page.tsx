@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { getSaleForReturn } from '@/actions/returns';
+import { verdictsForSale } from '@/actions/return-policy';
 import { listProducts } from '@/actions/stock';
 import { listStaff } from '@/actions/orders';
 import { getProfile } from '@/actions/auth';
@@ -54,6 +55,11 @@ export default async function NewReturnPage({ params, searchParams }: Props) {
   // which lands here as a 404 rather than a leak.
   if (!sale) notFound();
 
+  // All four combinations, resolved before the form renders, so the verdict is
+  // on screen before anything is entered (A-FR-8.10) and switches instantly
+  // when the seller changes the type or the condition.
+  const verdicts = await verdictsForSale(sale.sold_at);
+
   return (
     <div className="space-y-6">
       <div>
@@ -94,6 +100,7 @@ export default async function NewReturnPage({ params, searchParams }: Props) {
         products={products}
         staff={staff}
         currentUserId={profile?.id ?? ''}
+        verdicts={verdicts}
       />
     </div>
   );

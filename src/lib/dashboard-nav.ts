@@ -14,6 +14,7 @@ import {
   Bug,
   Tags,
   Users,
+  SlidersHorizontal,
   type LucideIcon
 } from 'lucide-react';
 import type { UserRole } from '@/types/database.types';
@@ -58,7 +59,17 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
 
   { key: 'catalogue', href: '/catalogue', icon: Tags, section: 'admin', roles: ['super_admin'] },
-  { key: 'accounts', href: '/accounts', icon: Users, section: 'admin', roles: ['super_admin'] }
+  { key: 'accounts', href: '/accounts', icon: Users, section: 'admin', roles: ['super_admin'] },
+  // The return windows are settings so the rule can change without a
+  // deployment (A-FR-8.8) -- but only for the one role that should be setting
+  // it. RLS enforces the same thing.
+  {
+    key: 'settings',
+    href: '/settings',
+    icon: SlidersHorizontal,
+    section: 'admin',
+    roles: ['super_admin']
+  }
 ];
 
 export const NAV_SECTION_ORDER: readonly NavSection[] = [
