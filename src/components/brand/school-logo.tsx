@@ -13,8 +13,20 @@ import { cn } from '@/lib/utils';
 
 type Size = 'sm' | 'md' | 'lg';
 
-const HEIGHT: Record<Size, string> = { sm: 'h-8', md: 'h-10', lg: 'h-14' };
-const TEXT: Record<Size, string> = { sm: 'text-sm', md: 'text-base', lg: 'text-lg' };
+// Sized generously and bumped up a step on wider screens so the lockup reads
+// clearly in headers, the sidebar and on printed A5 sheets alike. `w-auto` +
+// `max-w-full` keep the wide wordmark fitting whatever it is dropped into
+// without ever overflowing its container.
+const HEIGHT: Record<Size, string> = {
+  sm: 'h-10 sm:h-12',
+  md: 'h-14 sm:h-16',
+  lg: 'h-20 sm:h-24'
+};
+const TEXT: Record<Size, string> = {
+  sm: 'text-base sm:text-lg',
+  md: 'text-lg sm:text-xl',
+  lg: 'text-2xl sm:text-3xl'
+};
 
 export function SchoolLogo({
   size = 'md',
@@ -39,8 +51,8 @@ export function SchoolLogo({
       src="/logo.png"
       alt="Fondation Révélation Sainte Thérèse"
       onError={() => setFailed(true)}
-      className={cn('w-auto object-contain', HEIGHT[size], className)}
-      style={{ filter: 'contrast(1.06) saturate(1.08)' }}
+      className={cn('w-auto max-w-full object-contain', HEIGHT[size], className)}
+      style={{ filter: 'contrast(1.1) saturate(1.12)' }}
     />
   );
 }

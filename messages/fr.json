@@ -646,6 +646,56 @@
         "orange_money": "Orange Money",
         "bank_transfer": "Virement bancaire"
       }
+    },
+    "suite": {
+      "title": "Rapports",
+      "subtitle": "Ventes, production, commandes et audit — export Excel ou PDF.",
+      "report": "Rapport",
+      "exportExcel": "Exporter Excel",
+      "exportPdf": "Imprimer / Enregistrer en PDF",
+      "period": "Période : du {from} au {to}",
+      "stamp": "Généré par {name} le {at}",
+      "none": "Aucune donnée pour la période sélectionnée.",
+      "total": "Total",
+      "fulfilled": "Livrée",
+      "pending": "En cours",
+      "ordersSummary": "{placed} passées, {fulfilled} livrées",
+      "avgTurnaround": "Moy. (jours)",
+      "reports": {
+        "sales-by-period": "Ventes par période",
+        "sales-by-garment": "Ventes par article et taille",
+        "production": "Production par période",
+        "orders-turnaround": "Commandes passées et livrées",
+        "cancellations": "Annulations",
+        "audit": "Journal d'audit"
+      },
+      "col": {
+        "date": "Date",
+        "transactions": "Transactions",
+        "gross": "Brut",
+        "discount": "Remises",
+        "net": "Net",
+        "garment": "Article",
+        "size": "Taille",
+        "qty": "Qté",
+        "revenue": "Recette",
+        "product": "Produit",
+        "units": "Unités",
+        "order": "Commande",
+        "placed": "Passée",
+        "statusCol": "Statut",
+        "fulfilledOn": "Livrée",
+        "turnaround": "Délai (jours)",
+        "item": "Article",
+        "reason": "Motif",
+        "refundMethod": "Mode de remboursement",
+        "when": "Quand",
+        "amount": "Montant",
+        "actor": "Utilisateur",
+        "action": "Action",
+        "target": "Cible",
+        "details": "Détails"
+      }
     }
   },
   "Stock": {
