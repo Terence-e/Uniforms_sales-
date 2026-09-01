@@ -3,6 +3,10 @@
     "name": "Vente d'uniformes scolaires",
     "tagline": "Point de vente des uniformes scolaires"
   },
+  "Common": {
+    "close": "Fermer",
+    "loading": "Chargement"
+  },
   "Nav": {
     "dashboard": "Tableau de bord",
     "profile": "Profil",
