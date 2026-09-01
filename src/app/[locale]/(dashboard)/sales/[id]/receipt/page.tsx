@@ -44,6 +44,7 @@ export default async function ReceiptPage({ params, searchParams }: Props) {
     payment_method: sale.payment_method,
     subtotal: sale.subtotal,
     discount: sale.discount,
+    discount_reason: sale.discount_reason,
     total: sale.total,
     notes: sale.notes,
     signature_url: sale.signature_url,

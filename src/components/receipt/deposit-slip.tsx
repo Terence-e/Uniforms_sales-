@@ -5,7 +5,17 @@ import { Printer, ArrowLeft, Copy } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { DuplicateStamp } from '@/components/receipt/duplicate-stamp';
-import { formatDate, formatDateTime, formatMoney, SCHOOL } from '@/lib/format';
+import {
+  Meta,
+  Notice,
+  PaperToggle,
+  ReceiptStyle,
+  SchoolHeader,
+  SignatureLine,
+  usePaperSize
+} from '@/components/receipt/receipt-shell';
+import { L, NOTICES, PAYMENT_LABELS } from '@/lib/receipt-labels';
+import { formatDate, formatDateTime, formatMoney } from '@/lib/format';
 import type { PaymentMethod } from '@/types/database.types';
 
 export type DepositSlipData = {
@@ -37,36 +47,23 @@ export type DepositSlipData = {
  * shop's own stock -- so it says what was taken in, what was agreed, and when
  * to come back, and it carries no line-item table at all.
  *
- * Prints on the same A5 sheet as the other documents so the shop checks one
- * paper size against one printer.
+ * Every printed label is bilingual and comes from `L` (A-FR-7.10). The parent
+ * holding this slip is the least likely of anyone to share the language the
+ * seller had the screen in, and this is the paper they bring back weeks later.
  */
 export function DepositSlip({ slip }: { slip: DepositSlipData }) {
   const t = useTranslations('Alterations');
   const tReceipt = useTranslations('Receipt');
-  const tSales = useTranslations('Sales');
   const locale = useLocale();
+  const { paper, choose } = usePaperSize();
 
   const due = slip.charge > 0 && !slip.paid_at;
 
   return (
     <>
-      <style>{`
-        @page {
-          size: A5 portrait;
-          margin: 12mm;
-        }
-        @media print {
-          html, body { background: #fff !important; }
-          .receipt-sheet {
-            box-shadow: none !important;
-            border: 0 !important;
-            padding: 0 !important;
-            max-width: none !important;
-          }
-        }
-      `}</style>
+      <ReceiptStyle paper={paper} />
 
-      <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Button asChild variant="ghost" size="sm">
           <Link href={`/alterations/${slip.alteration_id}`}>
             <ArrowLeft className="size-4" />
@@ -74,6 +71,7 @@ export function DepositSlip({ slip }: { slip: DepositSlipData }) {
           </Link>
         </Button>
         <div className="flex items-center gap-2">
+          <PaperToggle paper={paper} onChange={choose} />
           {!slip.duplicate ? (
             <Button asChild variant="outline" size="sm">
               <Link href={`/alterations/${slip.alteration_id}/slip?reprint=1`}>
@@ -90,48 +88,35 @@ export function DepositSlip({ slip }: { slip: DepositSlipData }) {
       </div>
 
       <article className="receipt-sheet mx-auto max-w-xl rounded-lg border bg-white p-8 text-black shadow-sm">
-        <header className="border-b pb-4 text-center">
-          <h1 className="text-lg font-bold uppercase tracking-wide">{SCHOOL.name}</h1>
-          {SCHOOL.address ? (
-            <p className="text-xs text-neutral-600">{SCHOOL.address}</p>
-          ) : null}
-          {SCHOOL.phone ? <p className="text-xs text-neutral-600">{SCHOOL.phone}</p> : null}
-
-          {/* Bilingual whatever the UI locale: the parent holding this may not
-              share the language the seller was working in. */}
-          <div className="mt-2 border-2 border-black px-3 py-2">
-            <p className="text-base font-bold uppercase tracking-wide">
-              Bon de dépôt / Deposit slip
-            </p>
-            <p className="text-[0.7rem] font-semibold uppercase">
-              Vêtement confié à l&apos;école · Garment held by the school
-            </p>
+        <header className="border-b pb-3 text-center">
+          <SchoolHeader />
+          <div className="mt-2 border-2 border-black px-3 py-1.5">
+            <p className="text-sm font-bold uppercase tracking-wide">{L.depositTitle}</p>
+            <p className="text-[0.65rem] font-semibold uppercase">{L.garmentHeld}</p>
           </div>
           {slip.duplicate ? <DuplicateStamp /> : null}
         </header>
 
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-1 border-b py-4 text-xs">
-          <Meta label={t('slipNo')} value={slip.alteration_no} mono />
-          <Meta label={t('receivedAt')} value={formatDateTime(slip.received_at, locale)} />
-          <Meta label={t('parentName')} value={slip.customer_name} />
-          {slip.phone ? <Meta label={tSales('phone')} value={slip.phone} /> : null}
-          {slip.student_name ? (
-            <Meta label={tSales('studentName')} value={slip.student_name} />
-          ) : null}
-          {slip.class_level ? (
-            <Meta label={tSales('classLevel')} value={slip.class_level} />
-          ) : null}
+        <dl className="grid grid-cols-3 gap-x-4 gap-y-2 border-b py-3">
+          <Meta label={L.slipNo} value={slip.alteration_no} mono />
+          <Meta label={L.receivedAt} value={formatDateTime(slip.received_at, locale)} />
           {slip.expected_ready_date ? (
             <Meta
-              label={t('expectedReadyDate')}
+              label={L.expectedReady}
               value={formatDate(slip.expected_ready_date, locale)}
             />
           ) : null}
-          <Meta label={t('receivedBy')} value={slip.received_by} />
+          <Meta label={L.customer} value={slip.customer_name} />
+          {slip.phone ? <Meta label={L.phone} value={slip.phone} /> : null}
+          {slip.student_name ? (
+            <Meta label={L.student} value={slip.student_name} />
+          ) : null}
+          {slip.class_level ? <Meta label={L.class} value={slip.class_level} /> : null}
+          <Meta label={L.alterationReceivedBy} value={slip.received_by} />
         </dl>
 
-        <section className="border-b py-4">
-          <p className="text-xs uppercase text-neutral-500">{t('garment')}</p>
+        <section className="border-b py-3">
+          <p className="text-[0.6rem] leading-tight text-neutral-500">{L.garment}</p>
           <p className="text-sm font-semibold">
             {slip.garment}
             {slip.size ? (
@@ -139,63 +124,40 @@ export function DepositSlip({ slip }: { slip: DepositSlipData }) {
             ) : null}
           </p>
 
-          <p className="mt-3 text-xs uppercase text-neutral-500">{t('workRequired')}</p>
+          <p className="mt-3 text-[0.6rem] leading-tight text-neutral-500">
+            {L.workRequired}
+          </p>
           {/* Preserves the line breaks the seller typed: this text is what a
               disagreement months later gets settled against. */}
           <p className="whitespace-pre-wrap text-sm">{slip.work_required}</p>
         </section>
 
-        <section className="py-4 text-sm">
+        <section className="py-3 text-sm">
           {slip.charge > 0 ? (
             <div className="flex items-baseline justify-between">
-              <span className="text-neutral-600">
-                {due ? t('dueOnReturn') : t('paidLabel')}
-              </span>
+              <span className="text-neutral-600">{due ? L.dueOnReturn : L.paid}</span>
               <span className="font-bold tabular-nums">
                 {formatMoney(slip.charge, locale)}
               </span>
             </div>
           ) : (
-            <p className="text-neutral-600">{t('noCharge')}</p>
+            <p className="text-neutral-600">{L.noCharge}</p>
           )}
           {slip.paid_at && slip.payment_method ? (
             <p className="mt-1 text-xs text-neutral-600">
-              {tSales(`payment.${slip.payment_method}`)} ·{' '}
+              {PAYMENT_LABELS[slip.payment_method]} &middot;{' '}
               {formatDateTime(slip.paid_at, locale)}
             </p>
           ) : null}
         </section>
 
-        <div className="mt-6 flex items-end justify-between gap-8">
-          <div className="flex-1">
-            <p className="mb-1 text-[0.65rem] uppercase text-neutral-500">
-              {t('parentSignature')}
-            </p>
-            <div className="h-16 border-b border-neutral-400" />
-          </div>
+        <div className="mt-6 flex items-end gap-8">
+          <SignatureLine label={L.alterationReceivedBy} />
+          <SignatureLine label={L.parentSignature} />
         </div>
 
-        <footer className="mt-6 border-t pt-3 text-center text-[0.65rem] text-neutral-500">
-          {t('slipFooter')}
-        </footer>
+        <Notice notice={NOTICES.deposit} />
       </article>
     </>
-  );
-}
-
-function Meta({
-  label,
-  value,
-  mono
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div className="flex gap-2">
-      <dt className="text-neutral-600">{label}:</dt>
-      <dd className={mono ? 'font-mono font-semibold' : 'font-medium'}>{value}</dd>
-    </div>
   );
 }

@@ -288,7 +288,7 @@ export async function getSaleWithItems(saleId: string) {
     .from('sales')
     .select(
       `id, receipt_no, sold_at, customer_name, student_name, class_level, phone,
-       payment_method, payment_reference, subtotal, discount, total, notes,
+       payment_method, payment_reference, subtotal, discount, discount_reason, total, notes,
        signature_url,
        seller:profiles!sales_seller_id_fkey ( full_name ),
        recordedBy:profiles!sales_recorded_by_fkey ( full_name ),
