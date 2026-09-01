@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { PAPER_SIZES, type PaperSize } from '@/lib/receipt-labels';
+import { SchoolLogo } from '@/components/brand/school-logo';
 import { SCHOOL } from '@/lib/format';
 
 /**
@@ -137,25 +138,18 @@ export function PaperToggle({
 }
 
 /**
- * School name, contact details and -- if one has been configured -- the logo
- * (A-FR-7.8).
+ * The logo and contact details every printed sheet opens with (A-FR-7.8).
  *
- * The logo is optional on purpose. No file ships with the repo, and a receipt
- * that renders a broken image is worse than one that prints the school's name
- * alone. Drop a file in public/ and set NEXT_PUBLIC_SCHOOL_LOGO to switch it on.
+ * Uses SchoolLogo, which arrived on project while this branch was open and is
+ * the better answer: it falls back to the school's name when public/logo.png is
+ * missing, so the header can never render a broken image. That supersedes the
+ * NEXT_PUBLIC_SCHOOL_LOGO flag this component originally used -- an env var
+ * that has to be set correctly is a worse guarantee than an onError handler.
  */
 export function SchoolHeader() {
   return (
     <>
-      {SCHOOL.logo ? (
-        // eslint-disable-next-line @next/next/no-img-element -- printed asset, not a layout image
-        <img
-          src={SCHOOL.logo}
-          alt=""
-          className="mx-auto mb-2 h-14 object-contain"
-        />
-      ) : null}
-      <h1 className="text-lg font-bold uppercase tracking-wide">{SCHOOL.name}</h1>
+      <SchoolLogo size="lg" className="mx-auto" />
       {SCHOOL.address ? (
         <p className="text-xs text-neutral-600">{SCHOOL.address}</p>
       ) : null}

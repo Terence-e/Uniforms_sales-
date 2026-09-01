@@ -1,6 +1,6 @@
--- Down for 20260101002600_returns.sql.
+-- Down for 20260101002800_returns.sql.
 --
--- Run 20260101002700_record_return_down.sql FIRST: record_return() depends on
+-- Run 20260101002900_record_return_down.sql FIRST: record_return() depends on
 -- the types dropped here and will block them.
 --
 -- The 'exchange' value added to stock_movement_kind is NOT removed, because

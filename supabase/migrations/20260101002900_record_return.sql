@@ -11,7 +11,7 @@
 -- directly. The permission checks RLS would have applied are made explicitly,
 -- first.
 --
--- Separate migration from 20260101002600 because that one adds the 'exchange'
+-- Separate migration from 20260101002800 because that one adds the 'exchange'
 -- enum value, and Postgres will not let a value added in a transaction be used
 -- by that same transaction.
 --

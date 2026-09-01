@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { computeLineTotal, computeTotals } from '@/lib/validation/sale-schema';
+import { computeTotals } from '@/lib/validation/sale-schema';
 import {
   advanceLineSchema,
   cancelLineSchema,
@@ -54,52 +54,37 @@ export async function createOrder(input: OrderInput): Promise<CreateOrderResult>
   if (!user) return { ok: false, error: 'unauthorized' };
 
   const order = parsed.data;
-  const { subtotal, discount, total } = computeTotals(order.items, order.discount);
+  const { discount } = computeTotals(order.items, order.discount);
 
+  // One transaction (see record_sale): header, lines, and the ORD-YYYY-NNNN
+  // draw commit together or unwind together, so a failure never leaves a gap in
+  // the reference sequence. The per-line handed_over flag drives whether a line
+  // enters the workflow (status 'ordered') or is taken at the counter (NULL,
+  // A-FR-9.5); the function applies that rule. Totals are recomputed inside.
   const { data: inserted, error: orderError } = await supabase
-    .from('orders')
-    .insert({
-      customer_name: order.customerName,
-      student_name: order.studentName,
-      class_level: order.classLevel,
-      phone: order.phone,
-      payment_method: order.paymentMethod,
-      subtotal,
-      discount,
-      total,
-      expected_ready_date: order.expectedReadyDate,
-      measurements: order.measurements,
-      notes: order.notes,
-      seller_id: user.id
+    .rpc('record_order', {
+      p_customer_name: order.customerName,
+      p_student_name: order.studentName,
+      p_class_level: order.classLevel,
+      p_phone: order.phone,
+      p_payment_method: order.paymentMethod,
+      p_discount: discount,
+      p_expected_ready_date: order.expectedReadyDate,
+      p_measurements: order.measurements,
+      p_notes: order.notes,
+      p_items: order.items.map((item) => ({
+        product_id: item.productId,
+        description: item.description,
+        size: item.size,
+        unit_price: item.unitPrice,
+        quantity: item.quantity,
+        handed_over: item.handedOver
+      }))
     })
-    .select('id, order_no')
     .single();
 
   if (orderError || !inserted) {
     return { ok: false, error: orderError?.message ?? 'insertFailed' };
-  }
-
-  const { error: itemsError } = await supabase.from('order_items').insert(
-    order.items.map((item) => ({
-      order_id: inserted.id,
-      product_id: item.productId,
-      description: item.description,
-      size: item.size,
-      unit_price: item.unitPrice,
-      quantity: item.quantity,
-      line_total: computeLineTotal(item),
-      // NULL is the whole point: a line the parent takes away at the counter
-      // never enters the workflow (A-FR-9.5). Everything else starts at the
-      // beginning of the sequence.
-      status: item.handedOver ? null : ('ordered' as OrderStatus)
-    }))
-  );
-
-  if (itemsError) {
-    // Same hand-rolled undo as createSale: two PostgREST calls are not one
-    // transaction, and an order with no lines is money taken for nothing.
-    await supabase.from('orders').delete().eq('id', inserted.id);
-    return { ok: false, error: itemsError.message };
   }
 
   revalidatePath('/orders', 'page');
