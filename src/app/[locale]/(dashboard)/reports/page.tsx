@@ -1,5 +1,8 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getSalesSummary } from '@/actions/sales';
+import { getDailyReconciliation } from '@/actions/reports';
+import { DailyReconciliation } from '@/components/reports/daily-reconciliation';
+import { ReconExportButton } from '@/components/reports/recon-export-button';
 import { ExportPanel } from '@/components/forms/export-panel';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatMoney, toDateInputValue } from '@/lib/format';
@@ -22,15 +25,16 @@ export default async function ReportsPage({ params, searchParams }: Props) {
   setRequestLocale(locale);
 
   const { from: rawFrom, to: rawTo } = await searchParams;
-  const today = new Date();
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const today = toDateInputValue(new Date());
 
-  // Reject anything that isn't a plain date before it reaches `new Date()`.
-  const from = rawFrom && DATE_RE.test(rawFrom) ? rawFrom : toDateInputValue(monthStart);
-  const to = rawTo && DATE_RE.test(rawTo) ? rawTo : toDateInputValue(today);
+  // This is the daily reconciliation, so both ends default to today; the filter
+  // widens it for period reports. Reject anything that isn't a plain date first.
+  const from = rawFrom && DATE_RE.test(rawFrom) ? rawFrom : today;
+  const to = rawTo && DATE_RE.test(rawTo) ? rawTo : today;
 
-  const [summary, t] = await Promise.all([
+  const [summary, recon, t] = await Promise.all([
     getSalesSummary(from, to),
+    getDailyReconciliation(from, to),
     getTranslations('Reports')
   ]);
 
@@ -57,6 +61,15 @@ export default async function ReportsPage({ params, searchParams }: Props) {
           <ExportPanel initialFrom={from} initialTo={to} />
         </CardContent>
       </Card>
+
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">{t('recon.title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('recon.range', { from, to })}</p>
+        </div>
+        <ReconExportButton from={from} to={to} />
+      </div>
+      <DailyReconciliation data={recon} locale={locale} />
     </div>
   );
 }
