@@ -44,7 +44,6 @@ export const REPORT_KEYS = [
   'sales-by-garment',
   'production',
   'orders-turnaround',
-  'returns-exchanges',
   'cancellations',
   /**
    * Returns and exchanges, with the out-of-policy ones flagged (A-FR-8.12).

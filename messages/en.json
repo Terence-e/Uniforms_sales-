@@ -819,26 +819,12 @@
       "item": "Item",
       "refundMethod": "Refund method",
       "when": "When",
-      "outOfPolicy": "Out-of-policy returns & exchanges",
-      "return": "Return",
-      "saleRef": "Sale ref.",
-      "kind": "Type",
-      "condition": "Condition",
-      "elapsedDays": "Days elapsed",
       "none": "None",
       "methods": {
         "cash": "Cash",
         "mobile_money": "MoMo",
         "orange_money": "Orange Money",
         "bank_transfer": "Bank transfer"
-      },
-      "kinds": {
-        "return": "Return",
-        "exchange": "Exchange"
-      },
-      "conditions": {
-        "unworn": "Unworn",
-        "worn": "Worn"
       }
     },
     "suite": {
@@ -867,22 +853,12 @@
       "ordersSummary": "{placed} placed, {fulfilled} fulfilled",
       "avgTurnaround": "Avg (days)",
       "wholeSale": "Whole sale cancelled",
-      "override": "Override",
-      "withinPolicy": "Within policy",
-      "returnKind": {
-        "return": "Return",
-        "exchange": "Exchange"
-      },
-      "condition": {
-        "unworn": "Unworn",
-        "worn": "Worn"
-      },
       "reports": {
         "sales-by-period": "Sales by period",
         "sales-by-garment": "Sales by garment & size",
         "production": "Production by period",
         "orders-turnaround": "Orders placed & fulfilled",
-        "returns-exchanges": "Returns & exchanges",
+        "returns-overrides": "Returns & exchanges",
         "cancellations": "Cancellations",
         "audit": "Audit log"
       },
@@ -923,16 +899,7 @@
         "actor": "User",
         "action": "Action",
         "target": "Target",
-        "details": "Details",
-        "returnNo": "Return no.",
-        "saleRef": "Sale ref.",
-        "kind": "Type",
-        "condition": "Condition",
-        "elapsedDays": "Days elapsed",
-        "verdict": "Policy",
-        "refund": "Refund",
-        "collected": "Collected",
-        "collectedMethod": "Collected method"
+        "details": "Details"
       }
     }
   },

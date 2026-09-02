@@ -252,7 +252,6 @@ export async function DailyReconciliation({
         </CardContent>
       </Card>
 
-      {/* Cancellations -- shown separately, never in revenue */}
       {/* Returns and exchanges (A-FR-8.12). Its own card rather than a column
           in Cancellations: both move money back to a parent, but a cancelled
           order line and a returned garment are reconciled separately, and the
@@ -362,58 +361,6 @@ export async function DailyReconciliation({
                       <TableCell>{c.refundMethod ? methodLabel(c.refundMethod) : '—'}</TableCell>
                       <TableCell>{c.at ? formatDateTime(c.at, locale) : '—'}</TableCell>
                       <TableCell className="text-right tabular-nums">{money(c.amount)}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Out-of-policy returns & exchanges (A-FR-8.12) -- the day's overrides,
-          flagged so the administration sees how often the window was set aside
-          and by whom, without opening the dedicated returns report. */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <TriangleAlertIcon className="size-4" />
-            {t('recon.outOfPolicy')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('recon.return')}</TableHead>
-                  <TableHead>{t('recon.saleRef')}</TableHead>
-                  <TableHead>{t('recon.kind')}</TableHead>
-                  <TableHead>{t('recon.condition')}</TableHead>
-                  <TableHead className="text-right">{t('recon.elapsedDays')}</TableHead>
-                  <TableHead>{t('recon.reason')}</TableHead>
-                  <TableHead>{t('recon.when')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.outOfPolicy.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-4 text-center text-muted-foreground">
-                      {t('recon.none')}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  data.outOfPolicy.map((r) => (
-                    <TableRow key={r.returnNo}>
-                      <TableCell className="font-mono">{r.returnNo}</TableCell>
-                      <TableCell className="font-mono">{r.saleRef}</TableCell>
-                      <TableCell>{t(`recon.kinds.${r.kind}`)}</TableCell>
-                      <TableCell>{t(`recon.conditions.${r.condition}`)}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {r.elapsedDays ?? '—'}
-                      </TableCell>
-                      <TableCell>{r.reason ?? '—'}</TableCell>
-                      <TableCell>{r.at ? formatDateTime(r.at, locale) : '—'}</TableCell>
                     </TableRow>
                   ))
                 )}
