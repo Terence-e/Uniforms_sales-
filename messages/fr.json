@@ -294,6 +294,7 @@
       "catalogue": { "title": "Catalogue et prix", "desc": "V\u00eatements, tailles et prix." },
       "reports": { "title": "Rapports et exports", "desc": "Chiffres de vente et exports Excel." },
       "bugReports": {"title": "Signalements", "desc": "Problèmes signalés depuis l’application."},
+      "returns-overrides": "Retours et dérogations",
       "audit": { "title": "Journal d'audit", "desc": "Chaque action, filtrable par date, utilisateur et type." },
       "accounts": { "title": "Comptes utilisateurs", "desc": "Cr\u00e9er des comptes, r\u00e9initialiser les mots de passe et d\u00e9finir les r\u00f4les." }
     }
@@ -637,6 +638,7 @@
     "errorGeneric": "La politique n'a pas pu être mise à jour. Rien n'a été modifié."
   },
   "Returns": {
+    "fromExchange": "issu d’un échange",
     "soldDaysAgo": "Vendu il y a {days} jours.",
     "verdictAllowed": "{condition} : {kind} autorisé, dans le délai de {window} jours.",
     "verdictOutside": "{condition} : {kind} hors du délai de {window} jours.",
@@ -773,6 +775,18 @@
     "empty": "Aucune vente pour la p\u00e9riode s\u00e9lectionn\u00e9e.",
     "summary": "{count} ventes pour un total de {total}",
     "recon": {
+      "returns": "Retours et échanges",
+      "overrides": "{count} dérogation(s)",
+      "originalSale": "Vente d’origine",
+      "kind": "Type",
+      "policy": "Politique",
+      "by": "Saisi par",
+      "override": "Dérogation",
+      "withinPolicy": "Dans les délais",
+      "returnKinds": {
+        "return": "Remboursement",
+        "exchange": "Échange"
+      },
       "title": "Rapprochement de caisse quotidien",
       "range": "Du {from} au {to}",
       "export": "Exporter le rapprochement",
@@ -828,6 +842,17 @@
       }
     },
     "suite": {
+      "withinPolicy": "Dans les délais",
+      "override": "Dérogation",
+      "overrideRate": "{overrides} dérogation(s) sur {total} retour(s)",
+      "returnKinds": {
+        "return": "Remboursement",
+        "exchange": "Échange"
+      },
+      "conditions": {
+        "unworn": "Non porté",
+        "worn": "Porté"
+      },
       "title": "Rapports",
       "subtitle": "Ventes, production, commandes et audit — export Excel ou PDF.",
       "report": "Rapport",
@@ -862,6 +887,18 @@
         "audit": "Journal d'audit"
       },
       "col": {
+        "reference": "Référence",
+        "sale": "Vente d’origine",
+        "kind": "Type",
+        "condition": "État",
+        "elapsedDays": "Jours écoulés",
+        "windowDays": "Délai (jours)",
+        "verdict": "Politique",
+        "overrideReason": "Motif de la dérogation",
+        "refund": "Remboursé",
+        "collected": "Encaissé",
+        "method": "Mode",
+        "by": "Saisi par",
         "date": "Date",
         "transactions": "Transactions",
         "gross": "Brut",

@@ -294,6 +294,7 @@
       "catalogue": { "title": "Catalogue & prices", "desc": "Garments, sizes and prices." },
       "reports": { "title": "Reports & exports", "desc": "Sales figures and Excel exports." },
       "bugReports": {"title": "Bug reports", "desc": "Problems reported from inside the app."},
+      "returns-overrides": "Returns & policy overrides",
       "audit": { "title": "Audit log", "desc": "Every action, filterable by date, user and type." },
       "accounts": { "title": "User accounts", "desc": "Create accounts, reset passwords and set roles." }
     }
@@ -637,6 +638,7 @@
     "errorGeneric": "The policy could not be updated. Nothing was changed."
   },
   "Returns": {
+    "fromExchange": "from an exchange",
     "soldDaysAgo": "Sold {days} days ago.",
     "verdictAllowed": "{condition}: {kind} allowed, within the {window}-day window.",
     "verdictOutside": "{condition}: {kind} is outside the {window}-day window.",
@@ -773,6 +775,18 @@
     "empty": "No sales found for the selected period.",
     "summary": "{count} sales totalling {total}",
     "recon": {
+      "returns": "Returns & exchanges",
+      "overrides": "{count} override(s)",
+      "originalSale": "Original sale",
+      "kind": "Type",
+      "policy": "Policy",
+      "by": "Recorded by",
+      "override": "Override",
+      "withinPolicy": "Within policy",
+      "returnKinds": {
+        "return": "Refund",
+        "exchange": "Exchange"
+      },
       "title": "Daily cash reconciliation",
       "range": "{from} to {to}",
       "export": "Export reconciliation",
@@ -828,6 +842,17 @@
       }
     },
     "suite": {
+      "withinPolicy": "Within policy",
+      "override": "Override",
+      "overrideRate": "{overrides} override(s) out of {total} return(s)",
+      "returnKinds": {
+        "return": "Refund",
+        "exchange": "Exchange"
+      },
+      "conditions": {
+        "unworn": "Unworn",
+        "worn": "Worn"
+      },
       "title": "Reports",
       "subtitle": "Sales, production, orders and audit — export to Excel or PDF.",
       "report": "Report",
@@ -862,6 +887,18 @@
         "audit": "Audit log"
       },
       "col": {
+        "reference": "Reference",
+        "sale": "Original sale",
+        "kind": "Type",
+        "condition": "Condition",
+        "elapsedDays": "Days elapsed",
+        "windowDays": "Window (days)",
+        "verdict": "Policy",
+        "overrideReason": "Override reason",
+        "refund": "Refunded",
+        "collected": "Collected",
+        "method": "Method",
+        "by": "Recorded by",
         "date": "Date",
         "transactions": "Transactions",
         "gross": "Gross",

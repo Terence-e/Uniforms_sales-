@@ -30,11 +30,24 @@ const quantity = z.coerce
   .positive({ message: 'positive' })
   .max(9999);
 
-/** A garment coming back. Identified by the sale line it was bought on. */
-export const returnedLineSchema = z.object({
-  saleItemId: z.uuid({ message: 'required' }),
-  quantity
-});
+/**
+ * A garment coming back, identified by where the parent got it: the sale line
+ * it was bought on, or the outgoing line of an earlier exchange (A-FR-8.13).
+ *
+ * Exactly one, never both. Neither means there is nothing to price the refund
+ * against; both would mean two different histories for one garment. The
+ * database enforces the same rule independently.
+ */
+export const returnedLineSchema = z
+  .object({
+    saleItemId: z.uuid().nullable().default(null),
+    sourceReturnItemId: z.uuid().nullable().default(null),
+    quantity
+  })
+  .refine(
+    (line) => (line.saleItemId === null) !== (line.sourceReturnItemId === null),
+    { message: 'required', path: ['saleItemId'] }
+  );
 
 /** A garment going out in exchange. A fresh catalogue pick, not an old line. */
 export const outgoingLineSchema = z.object({

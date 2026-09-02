@@ -29,7 +29,12 @@ import {
 } from '@/lib/validation/return-schema';
 
 type SaleLine = {
-  id: string;
+  /** Stable id for this row, whichever kind of source it is. */
+  key: string;
+  /** Set when the garment was bought outright. */
+  saleItemId: string | null;
+  /** Set when it was received in an earlier exchange (A-FR-8.13). */
+  sourceReturnItemId: string | null;
   description: string;
   size: string | null;
   unit_price: number;
@@ -38,6 +43,8 @@ type SaleLine = {
   returned: number;
   /** What is still returnable. Zero means this line is spent. */
   returnable: number;
+  /** Marked in the list, so the seller knows which garment they are handling. */
+  viaExchange: boolean;
 };
 
 type Product = {
@@ -119,7 +126,7 @@ export function ReturnForm({
   const valueIn = useMemo(
     () =>
       lines.reduce(
-        (sum, line) => sum + (returning[line.id] ?? 0) * Number(line.unit_price),
+        (sum, line) => sum + (returning[line.key] ?? 0) * Number(line.unit_price),
         0
       ),
     [lines, returning]
@@ -153,7 +160,7 @@ export function ReturnForm({
     // independently -- this is the version that stops the seller before they
     // have typed a whole transaction that cannot be saved.
     const quantity = Math.max(0, Math.min(raw, line.returnable));
-    setReturning((current) => ({ ...current, [line.id]: quantity }));
+    setReturning((current) => ({ ...current, [line.key]: quantity }));
   }
 
   function submit() {
@@ -166,9 +173,16 @@ export function ReturnForm({
           kind,
           reason,
           condition,
-          returnedItems: Object.entries(returning)
-            .filter(([, quantity]) => quantity > 0)
-            .map(([saleItemId, quantity]) => ({ saleItemId, quantity })),
+          // Each chosen row carries its own source, so a garment received in an
+          // exchange comes back referencing the outgoing line it was handed
+          // over on rather than a sale line it never had.
+          returnedItems: lines
+            .filter((line) => (returning[line.key] ?? 0) > 0)
+            .map((line) => ({
+              saleItemId: line.saleItemId,
+              sourceReturnItemId: line.sourceReturnItemId,
+              quantity: returning[line.key]
+            })),
           outgoingItems:
             kind === 'exchange'
               ? outgoing
@@ -326,7 +340,7 @@ export function ReturnForm({
           ) : (
             returnable.map((line) => (
               <div
-                key={line.id}
+                key={line.key}
                 className="flex flex-wrap items-center gap-3 border-b pb-3 last:border-0 last:pb-0"
               >
                 <div className="min-w-0 flex-1">
@@ -334,6 +348,14 @@ export function ReturnForm({
                     {line.description}
                     {line.size ? (
                       <span className="text-muted-foreground"> ({line.size})</span>
+                    ) : null}
+                    {/* Says where this garment came from. Without it, two rows
+                        for the same product -- the one bought and the one
+                        swapped into -- are indistinguishable. */}
+                    {line.viaExchange ? (
+                      <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[0.65rem] font-normal">
+                        {t('fromExchange')}
+                      </span>
                     ) : null}
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -345,15 +367,15 @@ export function ReturnForm({
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Label htmlFor={`qty-${line.id}`} className="text-xs">
+                  <Label htmlFor={`qty-${line.key}`} className="text-xs">
                     {t('quantityBack')}
                   </Label>
                   <Input
-                    id={`qty-${line.id}`}
+                    id={`qty-${line.key}`}
                     type="number"
                     min={0}
                     max={line.returnable}
-                    value={returning[line.id] ?? 0}
+                    value={returning[line.key] ?? 0}
                     onChange={(event) =>
                       setQuantity(line, Number(event.target.value) || 0)
                     }

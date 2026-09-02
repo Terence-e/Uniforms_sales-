@@ -46,6 +46,15 @@ export const REPORT_KEYS = [
   'orders-turnaround',
   'returns-exchanges',
   'cancellations',
+  /**
+   * Returns and exchanges, with the out-of-policy ones flagged (A-FR-8.12).
+   *
+   * Lists every return rather than only the overrides. "How often is the rule
+   * being set aside" is a rate, and a rate needs a denominator -- three
+   * overrides out of four returns is a different conversation from three out of
+   * ninety.
+   */
+  'returns-overrides',
   'audit'
 ] as const;
 

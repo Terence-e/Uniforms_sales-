@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import { BanknoteIcon, SmartphoneIcon, TriangleAlertIcon } from 'lucide-react';
 import type { DailyReconciliation as Recon, MethodTotal } from '@/actions/reports';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -252,6 +253,82 @@ export async function DailyReconciliation({
       </Card>
 
       {/* Cancellations -- shown separately, never in revenue */}
+      {/* Returns and exchanges (A-FR-8.12). Its own card rather than a column
+          in Cancellations: both move money back to a parent, but a cancelled
+          order line and a returned garment are reconciled separately, and the
+          override flag only means something here. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+            {t('recon.returns')}
+            {/* The headline number the administration is looking for: how often
+                the rule was set aside in this period. Shown even when zero,
+                because "none" is the answer they want most days. */}
+            <Badge variant={data.overrideCount > 0 ? 'destructive' : 'secondary'}>
+              {t('recon.overrides', { count: data.overrideCount })}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('recon.reference')}</TableHead>
+                  <TableHead>{t('recon.originalSale')}</TableHead>
+                  <TableHead>{t('recon.kind')}</TableHead>
+                  <TableHead>{t('recon.policy')}</TableHead>
+                  <TableHead>{t('recon.method')}</TableHead>
+                  <TableHead>{t('recon.by')}</TableHead>
+                  <TableHead className="text-right">{t('recon.total')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.returns.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-4 text-center text-muted-foreground">
+                      {t('recon.none')}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  data.returns.map((r) => {
+                    const method = r.refund > 0 ? r.refundMethod : r.collectedMethod;
+                    return (
+                      <TableRow key={r.returnNo}>
+                        <TableCell className="font-mono">{r.returnNo}</TableCell>
+                        <TableCell className="font-mono">{r.saleReceiptNo}</TableCell>
+                        <TableCell>{t(`recon.returnKinds.${r.kind}`)}</TableCell>
+                        <TableCell>
+                          {r.withinPolicy === false ? (
+                            <span
+                              className="font-medium text-destructive"
+                              title={r.overrideReason ?? undefined}
+                            >
+                              {t('recon.override')}
+                            </span>
+                          ) : r.withinPolicy ? (
+                            t('recon.withinPolicy')
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                        <TableCell>{method ? methodLabel(method) : '—'}</TableCell>
+                        <TableCell>{r.seller ?? '—'}</TableCell>
+                        {/* Signed: a refund leaves the till, a top-up on a
+                            dearer exchange comes into it. */}
+                        <TableCell className="text-right tabular-nums">
+                          {r.refund > 0 ? `− ${money(r.refund)}` : money(r.collected)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t('recon.cancellations')}</CardTitle>

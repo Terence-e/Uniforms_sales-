@@ -1,0 +1,10 @@
+-- Down for 20260101003600_record_return_chain.sql.
+--
+-- Re-apply 20260101003200_record_return_policy.sql by hand to restore the
+-- previous body. The signature is identical, so `create or replace` from that
+-- file is the whole rollback -- it is not duplicated here, because two copies
+-- of a 260-line function drift apart and the migration that owns it is the
+-- honest source.
+--
+-- Run 20260101003500_exchange_chain_down.sql AFTER this: the older body does
+-- not reference source_return_item_id, so the column can then be dropped.
