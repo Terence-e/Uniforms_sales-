@@ -858,6 +858,7 @@
         "sales-by-garment": "Sales by garment & size",
         "production": "Production by period",
         "orders-turnaround": "Orders placed & fulfilled",
+        "returns-overrides": "Returns & exchanges",
         "cancellations": "Cancellations",
         "audit": "Audit log"
       },

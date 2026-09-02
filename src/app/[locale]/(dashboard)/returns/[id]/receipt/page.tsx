@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { isReprintRequest, logReprint } from '@/actions/reprints';
 import { getReturnWithItems } from '@/actions/returns';
 import { ReturnReceipt, type ReturnReceiptData } from '@/components/receipt/return-receipt';
+import { referenceQrSvg } from '@/lib/qr';
 
 type Props = {
   params: Promise<{ locale: string; id: string }>;
@@ -58,6 +59,7 @@ export default async function ReturnReceiptPage({ params, searchParams }: Props)
     collected_method: row.collected_method,
     signature_url: row.signature_url,
     duplicate,
+    qr_svg: referenceQrSvg(row.return_no),
     sale,
     seller_name: one(row.seller)?.full_name ?? '',
     recorded_by_name: one(row.recordedBy)?.full_name ?? null,

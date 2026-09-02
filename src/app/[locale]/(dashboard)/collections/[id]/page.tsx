@@ -6,6 +6,7 @@ import {
   CollectionSlip,
   type CollectionSlipData
 } from '@/components/receipt/collection-slip';
+import { referenceQrSvg } from '@/lib/qr';
 
 type Props = {
   params: Promise<{ locale: string; id: string }>;
@@ -38,6 +39,7 @@ export default async function CollectionSlipPage({ params, searchParams }: Props
   }
   const slip: CollectionSlipData = {
     duplicate,
+    qr_svg: referenceQrSvg(collection.col_no),
     id: collection.id,
     col_no: collection.col_no,
     collected_at: collection.collected_at,

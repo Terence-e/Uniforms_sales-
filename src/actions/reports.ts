@@ -158,6 +158,9 @@ export async function getDailyReconciliation(
       .select('id, ordered_at, items:order_items ( line_total, status )')
       .gte('ordered_at', fromIso)
       .lte('ordered_at', toIso),
+    // Returns and exchanges of the day (A-FR-8.12): their refunds and exchange
+    // top-ups feed the till figures, and the within-policy verdict stamped at
+    // the time drives the override count.
     admin
       .from('returns')
       .select(
@@ -301,9 +304,9 @@ export async function getDailyReconciliation(
       (a, b) => b.total - a.total
     ),
     discounts,
+    cancellations,
     returns,
-    overrideCount,
-    cancellations
+    overrideCount
   };
 }
 
@@ -609,6 +612,11 @@ export async function getReport(
       };
     }
 
+    // ------------------------------------------------- returns & exchanges
+    // A-FR-12.3: every return and exchange in the period. The within-policy
+    // verdict stamped on the row at the time (A-FR-8.7, A-FR-8.14) is shown as
+    // its own column so the administration can see, per line, whether the sale
+    // was set aside -- the same override count A-FR-8.12 asks to make visible.
     // -------------------------------------------------------- cancellations
     case 'cancellations': {
       // Two sources: an order LINE cancelled mid-workflow, and a whole SALE

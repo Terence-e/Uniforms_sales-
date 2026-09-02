@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getOrderWithItems } from '@/actions/orders';
 import { ReceiptPrint, type ReceiptData } from '@/components/receipt/receipt-print';
 import { deriveOrderStatus } from '@/lib/order-status';
+import { referenceQrSvg } from '@/lib/qr';
 
 type Props = {
   params: Promise<{ locale: string; id: string }>;
@@ -36,6 +37,7 @@ export default async function OrderReceiptPage({ params, searchParams }: Props) 
   }
   const receipt: ReceiptData = {
     duplicate,
+    qr_svg: referenceQrSvg(order.order_no),
     record_id: order.id,
     kind: 'order',
     // Derived from the lines, the same rule the detail page and the order list

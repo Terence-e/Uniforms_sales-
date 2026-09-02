@@ -312,6 +312,30 @@ export function buildReconciliationWorkbook(
   applyNumberFormat(cancelSheet, ['E'], cancelRows.length, 'yyyy-mm-dd hh:mm');
   XLSX.utils.book_append_sheet(workbook, cancelSheet, 'Cancellations');
 
+  // ------------------------------------------------------ returns & exchanges
+  // The day's returns, with out-of-policy ones flagged (A-FR-8.12) -- the same
+  // rows shown on screen, so the exported reconciliation is complete. Refund is
+  // money out, collected is a top-up in; only one is ever non-zero on a row.
+  const returnRows = recon.returns.map((r) => ({
+    'Return no.': r.returnNo,
+    'Sale ref.': r.saleReceiptNo,
+    Kind: r.kind,
+    Policy: r.withinPolicy === false ? 'Override' : r.withinPolicy ? 'Within policy' : '',
+    'Override reason': r.overrideReason ?? '',
+    'Refund method': r.refundMethod ? methodLabel(r.refundMethod) : '',
+    Refund: r.refund,
+    'Collected method': r.collectedMethod ? methodLabel(r.collectedMethod) : '',
+    Collected: r.collected,
+    By: r.seller ?? '',
+    When: r.at ? new Date(r.at) : ''
+  }));
+  const returnSheet = XLSX.utils.json_to_sheet(returnRows, { cellDates: true });
+  returnSheet['!cols'] = widths(16, 16, 12, 14, 30, 16, 14, 16, 14, 20, 18);
+  returnSheet['!freeze'] = { xSplit: 0, ySplit: 1 };
+  applyNumberFormat(returnSheet, ['G', 'I'], returnRows.length, money);
+  applyNumberFormat(returnSheet, ['K'], returnRows.length, 'yyyy-mm-dd hh:mm');
+  XLSX.utils.book_append_sheet(workbook, returnSheet, 'Returns');
+
   return workbook;
 }
 

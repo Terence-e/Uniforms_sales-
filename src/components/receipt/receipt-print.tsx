@@ -9,6 +9,7 @@ import {
   Meta,
   Notice,
   PaperToggle,
+  ReceiptQR,
   ReceiptStyle,
   SchoolHeader,
   SignatureLine,
@@ -32,6 +33,8 @@ export type ReceiptData = {
    * the reprint URL, never inferred here -- the sheet renders what it is told.
    */
   duplicate?: boolean;
+  /** The reference as a QR (A-FR-7.7), built server-side. */
+  qr_svg?: string | null;
   /** The sale or order id, so the sheet can link to its own reprint. */
   record_id: string;
   /** Orders only. */
@@ -141,7 +144,10 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
       </div>
 
       <article className="receipt-sheet mx-auto max-w-xl rounded-lg border bg-white p-8 text-black shadow-sm">
-        <header className="border-b pb-3 text-center">
+        <header className="relative border-b pb-3 text-center">
+          {receipt.qr_svg ? (
+            <ReceiptQR svg={receipt.qr_svg} className="absolute right-0 top-0" />
+          ) : null}
           <SchoolHeader />
           <div className="mt-2 border-2 border-black px-3 py-1.5">
             <p className="text-sm font-bold uppercase tracking-wide">

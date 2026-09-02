@@ -858,6 +858,7 @@
         "sales-by-garment": "Ventes par article et taille",
         "production": "Production par période",
         "orders-turnaround": "Commandes passées et livrées",
+        "returns-overrides": "Retours et échanges",
         "cancellations": "Annulations",
         "audit": "Journal d'audit"
       },

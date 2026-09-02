@@ -252,7 +252,6 @@ export async function DailyReconciliation({
         </CardContent>
       </Card>
 
-      {/* Cancellations -- shown separately, never in revenue */}
       {/* Returns and exchanges (A-FR-8.12). Its own card rather than a column
           in Cancellations: both move money back to a parent, but a cancelled
           order line and a returned garment are reconciled separately, and the
