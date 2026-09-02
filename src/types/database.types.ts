@@ -895,8 +895,13 @@ export type Database = {
           id: string;
           return_id: string;
           direction: ReturnDirection;
-          /** Set on the way in, null on the way out. */
+          /**
+           * Where the garment came from. Exactly one is set on an incoming
+           * line, both null on an outgoing one (A-FR-8.13).
+           */
           sale_item_id: string | null;
+          /** The outgoing line it was received on in an earlier exchange. */
+          source_return_item_id: string | null;
           product_id: string;
           description: string;
           size: string | null;
@@ -909,6 +914,7 @@ export type Database = {
           return_id: string;
           direction: ReturnDirection;
           sale_item_id?: string | null;
+          source_return_item_id?: string | null;
           product_id: string;
           description: string;
           size?: string | null;
@@ -922,6 +928,12 @@ export type Database = {
             foreignKeyName: 'return_items_return_id_fkey';
             columns: ['return_id'];
             referencedRelation: 'returns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'return_items_source_return_item_id_fkey';
+            columns: ['source_return_item_id'];
+            referencedRelation: 'return_items';
             referencedColumns: ['id'];
           },
           {
@@ -1014,6 +1026,7 @@ export type Database = {
           p_kind: ReturnKind;
           p_reason: string;
           p_condition: GarmentCondition;
+          /** [{sale_item_id | source_return_item_id, quantity}] */
           p_in_items: Json;
           p_out_items: Json;
           /**

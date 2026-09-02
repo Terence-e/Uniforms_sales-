@@ -64,6 +64,30 @@ export type DailyReconciliation = {
   undeliveredOrdersTotal: number;
   byReceiver: { name: string; total: number; count: number }[];
   discounts: { receiptNo: string; amount: number; reason: string | null }[];
+  /**
+   * Returns and exchanges in the period (A-FR-8.12).
+   *
+   * Kept apart from `cancellations`, which are cancelled ORDER lines. Both move
+   * money back to a parent, but they answer different questions and the
+   * administration reconciles them separately.
+   */
+  returns: {
+    returnNo: string;
+    saleReceiptNo: string;
+    kind: 'return' | 'exchange';
+    /** What went back to the parent. Zero on an even swap or a top-up. */
+    refund: number;
+    refundMethod: PaymentMethod | null;
+    /** What the parent paid when the replacement cost more. */
+    collected: number;
+    collectedMethod: PaymentMethod | null;
+    withinPolicy: boolean | null;
+    overrideReason: string | null;
+    seller: string | null;
+    at: string;
+  }[];
+  /** How many of the period's returns were recorded outside policy. */
+  overrideCount: number;
   cancellations: {
     orderNo: string;
     description: string;
@@ -105,7 +129,7 @@ export async function getDailyReconciliation(
   const fromIso = new Date(`${from}T00:00:00`).toISOString();
   const toIso = new Date(`${to}T23:59:59.999`).toISOString();
 
-  const [salesRes, cancelRes, orderRes] = await Promise.all([
+  const [salesRes, cancelRes, orderRes, returnRes] = await Promise.all([
     admin
       .from('sales')
       .select(
@@ -133,12 +157,24 @@ export async function getDailyReconciliation(
       .from('orders')
       .select('id, ordered_at, items:order_items ( line_total, status )')
       .gte('ordered_at', fromIso)
-      .lte('ordered_at', toIso)
+      .lte('ordered_at', toIso),
+    admin
+      .from('returns')
+      .select(
+        `return_no, kind, returned_at, refund_amount, refund_method,
+         collected_amount, collected_method, within_policy, override_reason,
+         sale:sales!returns_sale_id_fkey ( receipt_no ),
+         seller:profiles!returns_seller_id_fkey ( full_name )`
+      )
+      .gte('returned_at', fromIso)
+      .lte('returned_at', toIso)
+      .order('returned_at', { ascending: true })
   ]);
 
   const sales = salesRes.data ?? [];
   const cancels = cancelRes.data ?? [];
   const orders = orderRes.data ?? [];
+  const returnRows = returnRes.data ?? [];
 
   // --- sales-side aggregates ------------------------------------------------
   const byMethod = tallyByMethod(
@@ -173,11 +209,51 @@ export async function getDailyReconciliation(
     .filter((s) => num(s.discount) > 0)
     .map((s) => ({ receiptNo: s.receipt_no, amount: num(s.discount), reason: s.discount_reason }));
 
-  // --- refunds / cancellations (order-line cancellations) -------------------
-  const refundsByMethod = tallyByMethod(
-    cancels
+  // --- returns and exchanges (A-FR-8.12) ------------------------------------
+  const returns = returnRows.map((r) => {
+    const sale = Array.isArray(r.sale) ? r.sale[0] : r.sale;
+    return {
+      returnNo: r.return_no,
+      saleReceiptNo: (sale as { receipt_no?: string } | null)?.receipt_no ?? '—',
+      kind: r.kind,
+      refund: num(r.refund_amount),
+      refundMethod: r.refund_method,
+      collected: num(r.collected_amount),
+      collectedMethod: r.collected_method,
+      withinPolicy: r.within_policy,
+      overrideReason: r.override_reason,
+      seller: name(r.seller),
+      at: r.returned_at
+    };
+  });
+
+  // `within_policy` is null only for returns recorded before the policy engine
+  // existed. Those are not overrides -- no rule was set aside, there was no
+  // rule -- so they are counted as neither.
+  const overrideCount = returns.filter((r) => r.withinPolicy === false).length;
+
+  // --- refunds ---------------------------------------------------------------
+  //
+  // Two sources, and until now only the first was counted: cancelled order
+  // lines. A cash refund given for a RETURN never reduced netCashInBox, so the
+  // drawer could not balance on any day a garment came back. A-FR-8.12 asks for
+  // returns in the daily report; this is the arithmetic half of that.
+  const refundsByMethod = tallyByMethod([
+    ...cancels
       .filter((c) => c.refund_method)
-      .map((c) => ({ method: c.refund_method as PaymentMethod, amount: num(c.line_total) }))
+      .map((c) => ({ method: c.refund_method as PaymentMethod, amount: num(c.line_total) })),
+    ...returns
+      .filter((r) => r.refund > 0 && r.refundMethod)
+      .map((r) => ({ method: r.refundMethod as PaymentMethod, amount: r.refund }))
+  ]);
+
+  // An exchange for a dearer garment takes money IN. It is not a sale -- no
+  // sales row exists for it -- so without this the till is short by every
+  // top-up collected in the period.
+  const collectedOnExchanges = tallyByMethod(
+    returns
+      .filter((r) => r.collected > 0 && r.collectedMethod)
+      .map((r) => ({ method: r.collectedMethod as PaymentMethod, amount: r.collected }))
   );
 
   const cancellations = cancels.map((c) => {
@@ -210,7 +286,12 @@ export async function getDailyReconciliation(
     netCollected,
     byMethod,
     refundsByMethod,
-    netCashInBox: methodTotal(byMethod, 'cash') - methodTotal(refundsByMethod, 'cash'),
+    // Cash sold, plus cash taken as an exchange top-up, less cash refunded --
+    // whether that refund came from a cancelled order line or a return.
+    netCashInBox:
+      methodTotal(byMethod, 'cash')
+      + methodTotal(collectedOnExchanges, 'cash')
+      - methodTotal(refundsByMethod, 'cash'),
     mobileMoney: {
       total: mobileMoneyTx.reduce((sum, t) => sum + t.amount, 0),
       transactions: mobileMoneyTx
@@ -220,6 +301,8 @@ export async function getDailyReconciliation(
       (a, b) => b.total - a.total
     ),
     discounts,
+    returns,
+    overrideCount,
     cancellations
   };
 }
@@ -597,6 +680,97 @@ export async function getReport(
     }
 
     // ---------------------------------------------------------------- audit
+    case 'returns-overrides': {
+      // A-FR-8.12: "how often the rule is being set aside, and by whom".
+      //
+      // Every return in the period, not only the overrides. The count of
+      // overrides on its own is unreadable -- three is alarming out of four and
+      // unremarkable out of ninety -- so the denominator is in the table and
+      // the totals row carries the rate.
+      const { data } = await admin
+        .from('returns')
+        .select(
+          `return_no, kind, returned_at, condition, elapsed_days,
+           policy_window_days, within_policy, override_reason, reason,
+           refund_amount, refund_method, collected_amount, collected_method,
+           sale:sales!returns_sale_id_fkey ( receipt_no ),
+           seller:profiles!returns_seller_id_fkey ( full_name ),
+           recordedBy:profiles!returns_recorded_by_fkey ( full_name )`
+        )
+        .gte('returned_at', fromIso)
+        .lte('returned_at', toIso)
+        // Overrides first: the rows this report exists for should not be
+        // somewhere in the middle of a long list.
+        .order('within_policy', { ascending: true, nullsFirst: false })
+        .order('returned_at', { ascending: false });
+
+      const rows: ReportRow[] = (data ?? []).map((r) => {
+        const sale = Array.isArray(r.sale) ? r.sale[0] : r.sale;
+        return {
+          reference: r.return_no,
+          sale: (sale as { receipt_no?: string } | null)?.receipt_no ?? '—',
+          kind: t(`suite.returnKinds.${r.kind}`),
+          condition: t(`suite.conditions.${r.condition}`),
+          elapsed: r.elapsed_days,
+          window: r.policy_window_days,
+          // null is not an override: those rows predate the policy engine, so
+          // no rule was set aside because there was no rule.
+          verdict:
+            r.within_policy === null
+              ? '—'
+              : r.within_policy
+                ? t('suite.withinPolicy')
+                : t('suite.override'),
+          // The reason for going outside policy, which is a different field
+          // from the ordinary reason every return carries.
+          overrideReason: r.override_reason ?? '—',
+          reason: r.reason,
+          refund: num(r.refund_amount),
+          collected: num(r.collected_amount),
+          method:
+            r.refund_amount > 0 && r.refund_method
+              ? methodLabel(r.refund_method)
+              : r.collected_amount > 0 && r.collected_method
+                ? methodLabel(r.collected_method)
+                : '—',
+          by: name(r.recordedBy) ?? name(r.seller) ?? '—',
+          when: r.returned_at
+        };
+      });
+
+      const overrides = (data ?? []).filter((r) => r.within_policy === false).length;
+
+      return {
+        key,
+        title,
+        columns: [
+          { key: 'reference', label: c('reference'), type: 'text' },
+          { key: 'sale', label: c('sale'), type: 'text' },
+          { key: 'kind', label: c('kind'), type: 'text' },
+          { key: 'condition', label: c('condition'), type: 'text' },
+          { key: 'elapsed', label: c('elapsedDays'), type: 'number' },
+          { key: 'window', label: c('windowDays'), type: 'number' },
+          { key: 'verdict', label: c('verdict'), type: 'text' },
+          { key: 'overrideReason', label: c('overrideReason'), type: 'text' },
+          { key: 'reason', label: c('reason'), type: 'text' },
+          { key: 'refund', label: c('refund'), type: 'money' },
+          { key: 'collected', label: c('collected'), type: 'money' },
+          { key: 'method', label: c('method'), type: 'text' },
+          { key: 'by', label: c('by'), type: 'text' },
+          { key: 'when', label: c('when'), type: 'datetime' }
+        ],
+        rows,
+        totals: {
+          reference: t('suite.overrideRate', {
+            overrides,
+            total: rows.length
+          }),
+          refund: rows.reduce((sum, r) => sum + Number(r.refund ?? 0), 0),
+          collected: rows.reduce((sum, r) => sum + Number(r.collected ?? 0), 0)
+        }
+      };
+    }
+
     case 'audit': {
       const { data } = await admin
         .from('audit_log')
