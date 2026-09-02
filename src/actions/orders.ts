@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { logAudit } from '@/lib/audit';
+import { notify, OVERSIGHT } from '@/lib/notify';
 import { computeTotals } from '@/lib/validation/sale-schema';
 import {
   advanceLineSchema,
@@ -54,7 +56,7 @@ export async function createOrder(input: OrderInput): Promise<CreateOrderResult>
   if (!user) return { ok: false, error: 'unauthorized' };
 
   const order = parsed.data;
-  const { discount } = computeTotals(order.items, order.discount);
+  const { discount, total } = computeTotals(order.items, order.discount);
 
   // One transaction (see record_sale): header, lines, and the ORD-YYYY-NNNN
   // draw commit together or unwind together, so a failure never leaves a gap in
@@ -86,6 +88,30 @@ export async function createOrder(input: OrderInput): Promise<CreateOrderResult>
   if (orderError || !inserted) {
     return { ok: false, error: orderError?.message ?? 'insertFailed' };
   }
+
+  // Audited like every other money event (A-FR-11.1) -- placing an order takes
+  // payment in full, so it belongs in the trail with its total and line count.
+  await logAudit({
+    actorId: user.id,
+    action: 'order_created',
+    targetTable: 'orders',
+    targetId: inserted.id,
+    newValue: {
+      order_no: inserted.order_no,
+      customer_name: order.customerName,
+      total,
+      payment_method: order.paymentMethod,
+      item_count: order.items.length
+    }
+  });
+
+  await notify({
+    type: 'order_placed',
+    recipients: { kind: 'roles', roles: OVERSIGHT },
+    excludeActorId: user.id,
+    data: { order: inserted.order_no },
+    link: `/orders/${inserted.id}`
+  });
 
   revalidatePath('/orders', 'page');
   return { ok: true, orderId: inserted.id, orderNo: inserted.order_no };
