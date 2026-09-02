@@ -57,8 +57,11 @@ export async function recordReturn(input: ReturnInput): Promise<RecordReturnResu
       p_reason: value.reason,
       p_condition: value.condition,
       // Ids and quantities only. Prices are the server's to decide.
+      // Each line names exactly one source: the sale line it was bought on, or
+      // the outgoing line it was received on in an earlier exchange.
       p_in_items: value.returnedItems.map((line) => ({
         sale_item_id: line.saleItemId,
+        source_return_item_id: line.sourceReturnItemId,
         quantity: line.quantity
       })),
       p_out_items: value.outgoingItems.map((line) => ({
@@ -128,32 +131,63 @@ export async function getSaleForReturn(saleId: string) {
 
   if (!sale) return null;
 
-  const lineIds = (sale.items ?? []).map((item) => item.id);
-  const alreadyReturned = new Map<string, number>();
+  // Everything already handed over against this sale in an earlier exchange
+  // (A-FR-8.13). These are returnable too: a parent who swapped M for L and
+  // found L wrong must be able to bring L back, judged against the ORIGINAL
+  // sale date. Reading only sale_items would leave them stuck on day one.
+  const { data: chainRows } = await supabase
+    .from('return_items')
+    .select('id, direction, sale_item_id, source_return_item_id, product_id, description, size, unit_price, quantity, returns!inner ( sale_id )')
+    .eq('returns.sale_id', saleId);
 
-  if (lineIds.length > 0) {
-    const { data: priorLines } = await supabase
-      .from('return_items')
-      .select('sale_item_id, quantity')
-      .eq('direction', 'in')
-      .in('sale_item_id', lineIds);
+  const chain = chainRows ?? [];
 
-    for (const line of priorLines ?? []) {
-      if (!line.sale_item_id) continue;
-      alreadyReturned.set(
-        line.sale_item_id,
-        (alreadyReturned.get(line.sale_item_id) ?? 0) + line.quantity
-      );
-    }
+  // How much has come back against each source, whichever kind it is.
+  const returned = new Map<string, number>();
+  for (const line of chain) {
+    if (line.direction !== 'in') continue;
+    const key = line.sale_item_id ?? line.source_return_item_id;
+    if (key) returned.set(key, (returned.get(key) ?? 0) + line.quantity);
   }
 
-  return {
-    ...sale,
-    items: (sale.items ?? []).map((item) => {
-      const returned = alreadyReturned.get(item.id) ?? 0;
-      return { ...item, returned, returnable: item.quantity - returned };
-    })
-  };
+  const bought = (sale.items ?? []).map((item) => {
+    const back = returned.get(item.id) ?? 0;
+    return {
+      key: item.id,
+      saleItemId: item.id as string | null,
+      sourceReturnItemId: null as string | null,
+      product_id: item.product_id,
+      description: item.description,
+      size: item.size,
+      unit_price: item.unit_price,
+      quantity: item.quantity,
+      returned: back,
+      returnable: item.quantity - back,
+      /** Distinguishes a garment bought outright from one received in a swap. */
+      viaExchange: false
+    };
+  });
+
+  const received = chain
+    .filter((line) => line.direction === 'out')
+    .map((line) => {
+      const back = returned.get(line.id) ?? 0;
+      return {
+        key: line.id,
+        saleItemId: null as string | null,
+        sourceReturnItemId: line.id as string | null,
+        product_id: line.product_id,
+        description: line.description,
+        size: line.size,
+        unit_price: line.unit_price,
+        quantity: line.quantity,
+        returned: back,
+        returnable: line.quantity - back,
+        viaExchange: true
+      };
+    });
+
+  return { ...sale, items: [...bought, ...received] };
 }
 
 /** Every return and exchange against one sale, for the sale's own page. */
