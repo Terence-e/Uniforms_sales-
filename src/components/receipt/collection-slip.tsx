@@ -9,6 +9,7 @@ import {
   Meta,
   Notice,
   PaperToggle,
+  ReceiptQR,
   ReceiptStyle,
   SchoolHeader,
   SignatureLine,
@@ -20,6 +21,8 @@ import { formatDateTime, formatMoney } from '@/lib/format';
 export type CollectionSlipData = {
   /** A reprint, stamped DUPLICATA / DUPLICATE (A-FR-7.12). */
   duplicate?: boolean;
+  /** The COL reference as a QR (A-FR-7.7), built server-side. */
+  qr_svg?: string | null;
   /** The collection's own id, so the slip can link to its own reprint. */
   id: string;
   col_no: string;
@@ -93,7 +96,10 @@ export function CollectionSlip({ slip }: { slip: CollectionSlipData }) {
       </div>
 
       <article className="receipt-sheet mx-auto max-w-xl rounded-lg border bg-white p-8 text-black shadow-sm">
-        <header className="border-b pb-3 text-center">
+        <header className="relative border-b pb-3 text-center">
+          {slip.qr_svg ? (
+            <ReceiptQR svg={slip.qr_svg} className="absolute right-0 top-0" />
+          ) : null}
           <SchoolHeader />
           <div className="mt-2 border-2 border-black px-3 py-1.5">
             <p className="text-sm font-bold uppercase tracking-wide">

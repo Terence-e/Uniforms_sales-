@@ -312,6 +312,23 @@ export function buildReconciliationWorkbook(
   applyNumberFormat(cancelSheet, ['E'], cancelRows.length, 'yyyy-mm-dd hh:mm');
   XLSX.utils.book_append_sheet(workbook, cancelSheet, 'Cancellations');
 
+  // -------------------------------------------------------- out of policy
+  // The day's overrides (A-FR-8.12), the same rows flagged on screen.
+  const oopRows = recon.outOfPolicy.map((r) => ({
+    'Return no.': r.returnNo,
+    'Sale ref.': r.saleRef,
+    Kind: r.kind,
+    Condition: r.condition,
+    'Elapsed days': r.elapsedDays ?? '',
+    Reason: r.reason ?? '',
+    When: r.at ? new Date(r.at) : ''
+  }));
+  const oopSheet = XLSX.utils.json_to_sheet(oopRows, { cellDates: true });
+  oopSheet['!cols'] = widths(16, 16, 12, 12, 12, 36, 18);
+  oopSheet['!freeze'] = { xSplit: 0, ySplit: 1 };
+  applyNumberFormat(oopSheet, ['G'], oopRows.length, 'yyyy-mm-dd hh:mm');
+  XLSX.utils.book_append_sheet(workbook, oopSheet, 'Out of policy');
+
   return workbook;
 }
 

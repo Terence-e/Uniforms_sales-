@@ -6,6 +6,7 @@ import { listReturnsForSale } from '@/actions/returns';
 import { Link } from '@/i18n/navigation';
 import { ReceiptPrint, type ReceiptData } from '@/components/receipt/receipt-print';
 import { formatDateTime } from '@/lib/format';
+import { referenceQrSvg } from '@/lib/qr';
 
 type Props = {
   params: Promise<{ locale: string; id: string }>;
@@ -40,6 +41,7 @@ export default async function ReceiptPage({ params, searchParams }: Props) {
   }
   const receipt: ReceiptData = {
     duplicate,
+    qr_svg: referenceQrSvg(sale.receipt_no),
     record_id: sale.id,
     receipt_no: sale.receipt_no,
     sold_at: sale.sold_at,

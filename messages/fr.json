@@ -805,12 +805,26 @@
       "item": "Article",
       "refundMethod": "Mode de remboursement",
       "when": "Quand",
+      "outOfPolicy": "Retours et \u00e9changes hors d\u00e9lais",
+      "return": "Retour",
+      "saleRef": "R\u00e9f. vente",
+      "kind": "Type",
+      "condition": "\u00c9tat",
+      "elapsedDays": "Jours \u00e9coul\u00e9s",
       "none": "Aucun",
       "methods": {
         "cash": "Esp\u00e8ces",
         "mobile_money": "MoMo",
         "orange_money": "Orange Money",
         "bank_transfer": "Virement bancaire"
+      },
+      "kinds": {
+        "return": "Retour",
+        "exchange": "\u00c9change"
+      },
+      "conditions": {
+        "unworn": "Non port\u00e9",
+        "worn": "Port\u00e9"
       }
     },
     "suite": {
@@ -828,11 +842,22 @@
       "ordersSummary": "{placed} passées, {fulfilled} livrées",
       "avgTurnaround": "Moy. (jours)",
       "wholeSale": "Vente entière annulée",
+      "override": "Dérogation",
+      "withinPolicy": "Dans les délais",
+      "returnKind": {
+        "return": "Retour",
+        "exchange": "Échange"
+      },
+      "condition": {
+        "unworn": "Non porté",
+        "worn": "Porté"
+      },
       "reports": {
         "sales-by-period": "Ventes par période",
         "sales-by-garment": "Ventes par article et taille",
         "production": "Production par période",
         "orders-turnaround": "Commandes passées et livrées",
+        "returns-exchanges": "Retours et échanges",
         "cancellations": "Annulations",
         "audit": "Journal d'audit"
       },
@@ -861,7 +886,16 @@
         "actor": "Utilisateur",
         "action": "Action",
         "target": "Cible",
-        "details": "Détails"
+        "details": "Détails",
+        "returnNo": "N° retour",
+        "saleRef": "Réf. vente",
+        "kind": "Type",
+        "condition": "État",
+        "elapsedDays": "Jours écoulés",
+        "verdict": "Politique",
+        "refund": "Remboursé",
+        "collected": "Encaissé",
+        "collectedMethod": "Mode d'encaissement"
       }
     }
   },

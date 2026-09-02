@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getAlteration } from '@/actions/alterations';
 import { DepositSlip, type DepositSlipData } from '@/components/receipt/deposit-slip';
+import { referenceQrSvg } from '@/lib/qr';
 
 type Props = {
   params: Promise<{ locale: string; id: string }>;
@@ -35,6 +36,7 @@ export default async function DepositSlipPage({ params, searchParams }: Props) {
   }
   const slip: DepositSlipData = {
     duplicate,
+    qr_svg: referenceQrSvg(alteration.alteration_no),
     alteration_id: alteration.id,
     alteration_no: alteration.alteration_no,
     received_at: alteration.received_at,

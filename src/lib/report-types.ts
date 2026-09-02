@@ -44,6 +44,7 @@ export const REPORT_KEYS = [
   'sales-by-garment',
   'production',
   'orders-turnaround',
+  'returns-exchanges',
   'cancellations',
   'audit'
 ] as const;

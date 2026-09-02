@@ -159,6 +159,23 @@ export function SchoolHeader() {
 }
 
 /**
+ * The document's reference as a small QR, sat in the top corner of the header
+ * (A-FR-7.7). The SVG is generated server-side (src/lib/qr.ts) from the human
+ * reference and handed in as a string, so the encoder never reaches the client
+ * bundle. It prints as readily as it shows -- a parent who brings the paper back
+ * is found by scanning rather than typing.
+ */
+export function ReceiptQR({ svg, className }: { svg: string; className?: string }) {
+  return (
+    <div
+      // Our own generated markup from the document's reference, never user input.
+      dangerouslySetInnerHTML={{ __html: svg }}
+      className={`size-16 [&>svg]:block [&>svg]:size-full ${className ?? ''}`}
+    />
+  );
+}
+
+/**
  * One field of the header grid.
  *
  * The bilingual label is stacked above its value rather than sitting inline:

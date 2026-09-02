@@ -72,6 +72,20 @@ export type DailyReconciliation = {
     reason: string | null;
     at: string | null;
   }[];
+  /**
+   * Returns and exchanges done outside the policy window (A-FR-8.12). Flagged
+   * here so the day's overrides are visible in the report the administration
+   * reads every evening, not only in the dedicated returns report.
+   */
+  outOfPolicy: {
+    returnNo: string;
+    saleRef: string;
+    kind: 'return' | 'exchange';
+    condition: 'unworn' | 'worn';
+    elapsedDays: number | null;
+    reason: string | null;
+    at: string | null;
+  }[];
 };
 
 const MOBILE_METHODS: PaymentMethod[] = ['mobile_money', 'orange_money'];
@@ -105,7 +119,7 @@ export async function getDailyReconciliation(
   const fromIso = new Date(`${from}T00:00:00`).toISOString();
   const toIso = new Date(`${to}T23:59:59.999`).toISOString();
 
-  const [salesRes, cancelRes, orderRes] = await Promise.all([
+  const [salesRes, cancelRes, orderRes, outOfPolicyRes] = await Promise.all([
     admin
       .from('sales')
       .select(
@@ -133,12 +147,27 @@ export async function getDailyReconciliation(
       .from('orders')
       .select('id, ordered_at, items:order_items ( line_total, status )')
       .gte('ordered_at', fromIso)
-      .lte('ordered_at', toIso)
+      .lte('ordered_at', toIso),
+    // Out-of-policy returns/exchanges of the day (A-FR-8.12). `within_policy`
+    // is the verdict stamped at the time, so a later change to the windows does
+    // not retroactively reclassify what happened.
+    admin
+      .from('returns')
+      .select(
+        `return_no, kind, condition, elapsed_days, returned_at,
+         override_reason, reason,
+         sale:sales!returns_sale_id_fkey ( receipt_no )`
+      )
+      .is('within_policy', false)
+      .gte('returned_at', fromIso)
+      .lte('returned_at', toIso)
+      .order('returned_at', { ascending: true })
   ]);
 
   const sales = salesRes.data ?? [];
   const cancels = cancelRes.data ?? [];
   const orders = orderRes.data ?? [];
+  const outOfPolicyRows = outOfPolicyRes.data ?? [];
 
   // --- sales-side aggregates ------------------------------------------------
   const byMethod = tallyByMethod(
@@ -201,6 +230,22 @@ export async function getDailyReconciliation(
     return sum + owed;
   }, 0);
 
+  // --- out-of-policy overrides (A-FR-8.12) ----------------------------------
+  const outOfPolicy = outOfPolicyRows.map((r) => {
+    const sale = Array.isArray(r.sale) ? r.sale[0] : r.sale;
+    return {
+      returnNo: r.return_no,
+      saleRef: (sale as { receipt_no?: string } | null)?.receipt_no ?? '—',
+      kind: r.kind,
+      condition: r.condition,
+      elapsedDays: r.elapsed_days ?? null,
+      // The override reason is the one the seller gave for going outside the
+      // window; fall back to the ordinary return reason for pre-engine rows.
+      reason: r.override_reason ?? r.reason,
+      at: r.returned_at
+    };
+  });
+
   return {
     from,
     to,
@@ -220,7 +265,8 @@ export async function getDailyReconciliation(
       (a, b) => b.total - a.total
     ),
     discounts,
-    cancellations
+    cancellations,
+    outOfPolicy
   };
 }
 
@@ -522,6 +568,86 @@ export async function getReport(
           status: '',
           fulfilled: t('suite.avgTurnaround'),
           turnaround: avg
+        }
+      };
+    }
+
+    // ------------------------------------------------- returns & exchanges
+    // A-FR-12.3: every return and exchange in the period. The within-policy
+    // verdict stamped on the row at the time (A-FR-8.7, A-FR-8.14) is shown as
+    // its own column so the administration can see, per line, whether the sale
+    // was set aside -- the same override count A-FR-8.12 asks to make visible.
+    case 'returns-exchanges': {
+      const { data } = await admin
+        .from('returns')
+        .select(
+          `return_no, kind, condition, returned_at, reason,
+           elapsed_days, policy_window_days, within_policy, override_reason,
+           refund_amount, refund_method, collected_amount, collected_method,
+           sale:sales!returns_sale_id_fkey ( receipt_no )`
+        )
+        .gte('returned_at', fromIso)
+        .lte('returned_at', toIso)
+        .order('returned_at', { ascending: true });
+
+      const rows: ReportRow[] = (data ?? []).map((r) => {
+        const sale = Array.isArray(r.sale) ? r.sale[0] : r.sale;
+        // within_policy can be null on rows recorded before the policy engine
+        // (see the NOT VALID constraint in 20260101003100); read that as
+        // neither in-policy nor an override rather than inventing a verdict.
+        const verdict =
+          r.within_policy === false
+            ? t('suite.override')
+            : r.within_policy === true
+              ? t('suite.withinPolicy')
+              : '—';
+        return {
+          return_no: r.return_no,
+          sale: (sale as { receipt_no?: string } | null)?.receipt_no ?? '—',
+          kind: t(`suite.returnKind.${r.kind}`),
+          condition: t(`suite.condition.${r.condition}`),
+          elapsedDays: r.elapsed_days ?? null,
+          verdict,
+          reason: r.override_reason ?? r.reason,
+          refund: num(r.refund_amount),
+          refundMethod: r.refund_method ? methodLabel(r.refund_method) : '—',
+          collected: num(r.collected_amount),
+          collectedMethod: r.collected_method ? methodLabel(r.collected_method) : '—',
+          when: r.returned_at
+        };
+      });
+
+      return {
+        key,
+        title,
+        columns: [
+          { key: 'return_no', label: c('returnNo'), type: 'text' },
+          { key: 'sale', label: c('saleRef'), type: 'text' },
+          { key: 'kind', label: c('kind'), type: 'text' },
+          { key: 'condition', label: c('condition'), type: 'text' },
+          { key: 'elapsedDays', label: c('elapsedDays'), type: 'number' },
+          { key: 'verdict', label: c('verdict'), type: 'text' },
+          { key: 'reason', label: c('reason'), type: 'text' },
+          { key: 'refund', label: c('refund'), type: 'money' },
+          { key: 'refundMethod', label: c('refundMethod'), type: 'text' },
+          { key: 'collected', label: c('collected'), type: 'money' },
+          { key: 'collectedMethod', label: c('collectedMethod'), type: 'text' },
+          { key: 'when', label: c('when'), type: 'datetime' }
+        ],
+        rows,
+        totals: {
+          return_no: t('suite.total'),
+          sale: '',
+          kind: '',
+          condition: '',
+          elapsedDays: '',
+          verdict: '',
+          reason: '',
+          refund: rows.reduce((s, r) => s + Number(r.refund), 0),
+          refundMethod: '',
+          collected: rows.reduce((s, r) => s + Number(r.collected), 0),
+          collectedMethod: '',
+          when: ''
         }
       };
     }

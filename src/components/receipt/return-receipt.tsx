@@ -9,6 +9,7 @@ import {
   Meta,
   Notice,
   PaperToggle,
+  ReceiptQR,
   ReceiptStyle,
   SchoolHeader,
   SignatureLine,
@@ -42,6 +43,8 @@ export type ReturnReceiptData = {
   collected_method: PaymentMethod | null;
   signature_url: string | null;
   duplicate?: boolean;
+  /** The RTN reference as a QR (A-FR-7.7), built server-side. */
+  qr_svg?: string | null;
   sale: {
     id: string;
     receipt_no: string;
@@ -116,7 +119,10 @@ export function ReturnReceipt({ receipt }: { receipt: ReturnReceiptData }) {
       </div>
 
       <article className="receipt-sheet mx-auto max-w-xl rounded-lg border bg-white p-8 text-black shadow-sm">
-        <header className="border-b pb-3 text-center">
+        <header className="relative border-b pb-3 text-center">
+          {receipt.qr_svg ? (
+            <ReceiptQR svg={receipt.qr_svg} className="absolute right-0 top-0" />
+          ) : null}
           <SchoolHeader />
           {/* Boxed and bilingual so this is never mistaken for a sale at a
               glance, which is the whole point of A-FR-8.4. */}
