@@ -18,8 +18,8 @@ export function AuthShell({
     <div className="relative flex min-h-dvh flex-col overflow-hidden bg-background">
       <div className="pointer-events-none absolute inset-0 bg-grid opacity-70" aria-hidden />
 
-      <header className="relative z-10 flex items-center justify-between gap-4 px-6 py-5 sm:px-10">
-        <SchoolLogo size="sm" />
+      <header className="relative z-10 flex items-center justify-between gap-4 px-6 py-6 sm:px-10">
+        <SchoolLogo size="md" />
         <div className="flex items-center gap-2">
           {topRight}
           <LanguageSwitcher />

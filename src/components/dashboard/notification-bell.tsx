@@ -48,10 +48,21 @@ export function NotificationBell() {
   const unread = items.filter((i) => !i.is_read).length;
 
   const text = (n: AppNotification) => {
+    // Legacy key kept for the original event; everything else is data-driven so a
+    // new notification type renders as soon as its label is added -- and shows a
+    // generic title until then, never a blank or a crash.
     if (n.type === 'password_reset_request') {
       return {
         title: t('passwordResetRequest.title'),
         body: t('passwordResetRequest.body', { email: String(n.data.email ?? '') })
+      };
+    }
+    if (t.has(`types.${n.type}.title`)) {
+      return {
+        title: t(`types.${n.type}.title`),
+        body: t.has(`types.${n.type}.body`)
+          ? t(`types.${n.type}.body`, n.data as Record<string, string>)
+          : ''
       };
     }
     return { title: t('generic'), body: '' };

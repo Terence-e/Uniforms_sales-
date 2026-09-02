@@ -16,7 +16,8 @@ import {
   workbookToUint8Array,
   type ExportSale
 } from '@/lib/excel-export';
-import { CURRENCY, SCHOOL } from '@/lib/format';
+import { CURRENCY, SCHOOL, formatMoney } from '@/lib/format';
+import { notify, OVERSIGHT } from '@/lib/notify';
 
 /** One line asking for more than the shelf is believed to hold. */
 export type Shortfall = {
@@ -294,6 +295,16 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
     });
   }
 
+  // Tell the oversight roles the till moved, without pinging the seller who rang
+  // it. New event types plug in the same way (see @/lib/notify).
+  await notify({
+    type: 'sale_recorded',
+    recipients: { kind: 'roles', roles: OVERSIGHT },
+    excludeActorId: user.id,
+    data: { receipt: inserted.receipt_no, total: formatMoney(total) },
+    link: `/sales/${inserted.id}/receipt`
+  });
+
   revalidatePath('/sales', 'page');
   return { ok: true, saleId: inserted.id, receiptNo: inserted.receipt_no };
 }
@@ -353,6 +364,13 @@ export async function cancelSale(saleId: string, reason: string): Promise<Cancel
       .single();
 
     if (error || !data) return { ok: false, error: error?.message ?? 'cancelFailed' };
+
+    await notify({
+      type: 'sale_cancelled',
+      recipients: { kind: 'roles', roles: OVERSIGHT },
+      data: { receipt: data.receipt_no },
+      link: `/sales/${saleId}/receipt`
+    });
 
     revalidatePath('/cancellations', 'page');
     revalidatePath('/sales', 'page');

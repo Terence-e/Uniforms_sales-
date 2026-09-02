@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logAudit } from '@/lib/audit';
+import { notify, OVERSIGHT } from '@/lib/notify';
 import { productSchema, type ProductInput } from '@/lib/validation/catalogue-schema';
 
 type FieldErrors = Partial<
@@ -183,6 +184,13 @@ export async function updateProduct(
       targetId: id,
       previousValue: { unit_price: Number(current.unit_price) },
       newValue: { unit_price }
+    });
+    // Everyone who prices from the catalogue should know it moved.
+    await notify({
+      type: 'price_changed',
+      recipients: { kind: 'roles', roles: OVERSIGHT },
+      excludeActorId: uid,
+      data: { product: name_en }
     });
   }
 
