@@ -721,6 +721,29 @@
     "errorValidation": "Vérifiez les champs signalés.",
     "errorUnauthorized": "Vous n'êtes plus connecté. Reconnectez-vous et réessayez — rien n'est perdu."
   },
+  "Documents": {
+    "title": "Reçus et documents",
+    "subtitle": "Tous les documents émis par le système, du plus récent au plus ancien. Utilisez la recherche pour en trouver un ; utilisez cette page pour voir ce qui a été émis.",
+    "type": "Type de document",
+    "from": "Du",
+    "to": "Au",
+    "clear": "Effacer les filtres",
+    "kinds": {
+      "sale": "Vente",
+      "order": "Commande",
+      "collection": "Retrait",
+      "alteration": "Retouche",
+      "return": "Retour"
+    },
+    "issued": "{count} documents",
+    "none": "Aucun document ne correspond à ces filtres.",
+    "reprinted": "Réimprimé {count}×",
+    "open": "Ouvrir",
+    "reprint": "Réimprimer",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "pageOf": "Page {page} sur {pages}"
+  },
   "Receipt": {
     "hasReturns": "Des retours ont été enregistrés sur cette vente. La vente elle-même est inchangée.",
     "title": "Re\u00e7u",

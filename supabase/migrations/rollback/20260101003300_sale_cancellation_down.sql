@@ -1,4 +1,4 @@
--- Rollback for 20260101003100_sale_cancellation.sql.
+-- Rollback for 20260101003300_sale_cancellation.sql.
 --
 -- MANUAL ONLY -- apply by hand (psql or the SQL editor), never with `db push`
 -- or `db reset`. See supabase/README.md.
