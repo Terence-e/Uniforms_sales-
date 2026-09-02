@@ -103,6 +103,12 @@
     "passwordResetRequest": {
       "title": "R\u00e9initialisation de mot de passe demand\u00e9e",
       "body": "{email} a besoin d'un nouveau mot de passe. Ouvrez Comptes pour en d\u00e9finir un temporaire."
+    },
+    "types": {
+      "sale_recorded": { "title": "Nouvelle vente", "body": "{receipt} \u00b7 {total}" },
+      "sale_cancelled": { "title": "Vente annul\u00e9e", "body": "{receipt}" },
+      "order_placed": { "title": "Nouvelle commande", "body": "{order}" },
+      "price_changed": { "title": "Prix modifi\u00e9", "body": "{product}" }
     }
   },
   "Audit": {
@@ -211,6 +217,21 @@
   },
   "Dashboard": {
     "title": "Tableau de bord",
+    "chart": {
+      "metrics": {
+        "sales": "Ventes",
+        "orders": "Commandes",
+        "discounts": "Remises",
+        "payment": "Modes de paiement"
+      },
+      "periods": { "daily": "Jours", "weekly": "Semaines", "monthly": "Mois", "yearly": "Années" },
+      "methods": {
+        "cash": "Espèces",
+        "mobile_money": "MoMo",
+        "orange_money": "Orange Money",
+        "bank_transfer": "Virement bancaire"
+      }
+    },
     "overview": {
       "welcome": "Bon retour, {name}",
       "subtitle": "Voici ce qui se passe aujourd'hui.",

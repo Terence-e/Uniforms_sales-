@@ -103,6 +103,12 @@
     "passwordResetRequest": {
       "title": "Password reset requested",
       "body": "{email} needs a new password. Open Accounts to set a temporary one."
+    },
+    "types": {
+      "sale_recorded": { "title": "New sale", "body": "{receipt} · {total}" },
+      "sale_cancelled": { "title": "Sale cancelled", "body": "{receipt}" },
+      "order_placed": { "title": "New order", "body": "{order}" },
+      "price_changed": { "title": "Price changed", "body": "{product}" }
     }
   },
   "Audit": {
@@ -211,6 +217,21 @@
   },
   "Dashboard": {
     "title": "Dashboard",
+    "chart": {
+      "metrics": {
+        "sales": "Sales",
+        "orders": "Orders",
+        "discounts": "Discounts",
+        "payment": "Payment methods"
+      },
+      "periods": { "daily": "Days", "weekly": "Weeks", "monthly": "Months", "yearly": "Years" },
+      "methods": {
+        "cash": "Cash",
+        "mobile_money": "MoMo",
+        "orange_money": "Orange Money",
+        "bank_transfer": "Bank transfer"
+      }
+    },
     "overview": {
       "welcome": "Welcome back, {name}",
       "subtitle": "Here's what's happening today.",

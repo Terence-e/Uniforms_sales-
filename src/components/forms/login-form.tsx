@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { SchoolLogo } from '@/components/brand/school-logo';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -25,6 +26,22 @@ function SubmitButton() {
       )}
       {pending ? t('submitting') : t('submit')}
     </Button>
+  );
+}
+
+/**
+ * Post-login splash: once the form is submitting, a full-screen logo takes over
+ * until the redirect to the dashboard lands. A successful sign-in keeps the
+ * action pending through the navigation, so the branded screen covers the whole
+ * gap (well under 5s); a failure clears it and shows the error instead.
+ */
+function LoginSplash() {
+  const { pending } = useFormStatus();
+  if (!pending) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+      <SchoolLogo size="lg" className="animate-logo-blink" />
+    </div>
   );
 }
 
@@ -122,6 +139,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string | null }) {
       </div>
 
       <SubmitButton />
+      <LoginSplash />
     </form>
   );
 }

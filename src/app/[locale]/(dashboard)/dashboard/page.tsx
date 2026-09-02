@@ -9,9 +9,10 @@ import {
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { getProfile, countActiveUsers } from '@/actions/auth';
-import { getSalesSummary, getMonthlySales, listRecentSales } from '@/actions/sales';
+import { getSalesSummary, listRecentSales } from '@/actions/sales';
+import { getDashboardChart } from '@/actions/dashboard';
 import { listStock } from '@/actions/stock';
-import { SalesBarChart } from '@/components/dashboard/sales-bar-chart';
+import { DashboardChart } from '@/components/dashboard/dashboard-chart';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDateTime, formatMoney, toDateInputValue } from '@/lib/format';
@@ -46,10 +47,10 @@ export default async function DashboardHome({ params }: Props) {
   if (!profile) return null;
   const role = profile.role as UserRole;
 
-  const [t, summary, monthly, recent, stock, users] = await Promise.all([
+  const [t, summary, chart, recent, stock, users] = await Promise.all([
     getTranslations('Dashboard'),
     getSalesSummary(toDateInputValue(monthStart), toDateInputValue(today)),
-    getMonthlySales(8),
+    getDashboardChart('monthly', 'sales'),
     listRecentSales(6),
     listStock(),
     // Shown to every role now, so always fetched.
@@ -133,7 +134,7 @@ export default async function DashboardHome({ params }: Props) {
             <CardTitle className="text-base">{chartTitle}</CardTitle>
           </CardHeader>
           <CardContent>
-            <SalesBarChart data={monthly} locale={locale} emptyLabel={t('overview.chartEmpty')} />
+            <DashboardChart initial={chart} locale={locale} emptyLabel={t('overview.chartEmpty')} />
           </CardContent>
         </Card>
 

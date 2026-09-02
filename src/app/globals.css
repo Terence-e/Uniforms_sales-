@@ -8,7 +8,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-heading: var(--font-poppins), var(--font-inter), sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -132,9 +132,38 @@
     font-family: var(--font-heading);
     letter-spacing: -0.01em;
   }
+
+  /* Dark mode embellishment: a flat near-black reads cheap. Two very soft
+     colour glows (cool at top-left, a warm hint of the brand orange top-right)
+     give the surface depth without tinting content. Fixed so it doesn't scroll. */
+  .dark body {
+    background-image:
+      radial-gradient(1100px 620px at 12% -12%, oklch(0.30 0.04 262 / 0.40), transparent 60%),
+      radial-gradient(950px 520px at 105% -5%, oklch(0.32 0.06 55 / 0.20), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  /* Cards lift off that gradient with a hairline top highlight + soft shadow,
+     the standard trick for legible elevation on dark surfaces. */
+  .dark [data-slot="card"] {
+    box-shadow:
+      inset 0 1px 0 0 oklch(1 0 0 / 6%),
+      0 1px 2px 0 oklch(0 0 0 / 30%),
+      0 8px 24px -12px oklch(0 0 0 / 45%);
+  }
+}
+
+@keyframes logo-blink {
+  0%, 100% { opacity: 0.45; transform: scale(0.99); }
+  50% { opacity: 1; transform: scale(1); }
 }
 
 @layer utilities {
+  /* Gentle blink + faint fade for the post-login splash logo. */
+  .animate-logo-blink {
+    animation: logo-blink 1.5s ease-in-out infinite;
+  }
+
   /* Faint fading grid used behind the auth cards. */
   .bg-grid {
     background-image:
