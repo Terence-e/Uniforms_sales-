@@ -1,3 +1,19 @@
+-- RENUMBERED from 20260101003100.
+--
+-- It collided with 20260101003100_return_policy.sql: both were merged in the
+-- same window, each unaware of the other. supabase_migrations.schema_migrations
+-- has version as its primary key, so only one file at a shared version can ever
+-- be recorded -- `supabase db push` then fails on the second with a duplicate
+-- key, and a FRESH database applies only one of the two.
+--
+-- Both migrations' effects are present on the current database, so nothing was
+-- lost; this renumber is what stops the next push failing and what makes a
+-- rebuild from scratch correct.
+--
+-- This file moved rather than return_policy because return_policy has a
+-- dependent at 003200 (record_return_policy calls return_policy_verdict), and
+-- moving it would reorder that pair. This migration is self-contained.
+
 -- Sale cancellation (A-FR-6.9). A sale is never edited or deleted; cancelling is
 -- the one permitted change and it is a controlled, one-way act:
 --

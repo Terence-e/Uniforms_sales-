@@ -45,7 +45,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { key: 'returns', href: '/returns', icon: RefreshCcw, section: 'operations', roles: OPERATORS },
   { key: 'cancellations', href: '/cancellations', icon: Ban, section: 'operations', roles: OPERATORS },
 
-  { key: 'receipts', icon: Receipt, section: 'records', roles: ALL },
+  { key: 'receipts', href: '/receipts', icon: Receipt, section: 'records', roles: ALL },
   { key: 'reports', href: '/reports', icon: BarChart3, section: 'records', roles: ALL },
   { key: 'audit', href: '/audit', icon: ScrollText, section: 'records', roles: ALL },
   // Maintenance and the Super Admin only -- RLS enforces it too; this just

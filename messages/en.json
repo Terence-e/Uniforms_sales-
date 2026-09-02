@@ -700,6 +700,29 @@
     "errorValidation": "Check the highlighted fields.",
     "errorUnauthorized": "You are not signed in. Sign in again and retry — nothing was lost."
   },
+  "Documents": {
+    "title": "Receipts & documents",
+    "subtitle": "Every document the system has issued, newest first. Use search when you are looking for one; use this when you want to see what was issued.",
+    "type": "Document type",
+    "from": "From",
+    "to": "To",
+    "clear": "Clear filters",
+    "kinds": {
+      "sale": "Sale",
+      "order": "Order",
+      "collection": "Collection",
+      "alteration": "Alteration",
+      "return": "Return"
+    },
+    "issued": "{count} documents",
+    "none": "No documents match these filters.",
+    "reprinted": "Reprinted {count}×",
+    "open": "Open",
+    "reprint": "Reprint",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {page} of {pages}"
+  },
   "Receipt": {
     "hasReturns": "This sale has returns recorded against it. The sale itself is unchanged.",
     "title": "Receipt",

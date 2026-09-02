@@ -1055,6 +1055,27 @@ export type Database = {
           within_policy: boolean;
         }[];
       };
+      /** The document ledger: all five reference series in one list. */
+      list_documents: {
+        Args: {
+          /** null or empty means all five kinds. */
+          p_kinds: string[] | null;
+          p_from: string | null;
+          p_to: string | null;
+          p_limit: number;
+          p_offset: number;
+        };
+        Returns: {
+          kind: string;
+          id: string;
+          reference: string;
+          issued_at: string;
+          customer_name: string;
+          amount: number;
+          reprint_count: number;
+          total_count: number;
+        }[];
+      };
       record_production_batch: {
         Args: {
           p_lines: Json;
