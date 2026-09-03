@@ -16,7 +16,8 @@
     "db:policies": "node scripts/apply-policies.mjs",
     "db:seed:users": "node scripts/seed-users.mjs",
     "db:reset:passwords": "node scripts/reset-all-passwords.mjs",
-    "db:types": "supabase gen types typescript --linked --schema public > src/types/database.types.ts"
+    "db:types": "supabase gen types typescript --linked --schema public > src/types/database.types.ts",
+    "test:rls": "node tests/rls/rls.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
