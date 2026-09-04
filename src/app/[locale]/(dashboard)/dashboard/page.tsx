@@ -70,7 +70,8 @@ export default async function DashboardHome({ params }: Props) {
     products: {
       icon: BoxesIcon,
       tone: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
-      value: String(stock.length)
+      // Stock is now one row per (product, size); count distinct products.
+      value: String(new Set(stock.map((s) => s.id)).size)
     },
     lowStock: {
       icon: TriangleAlertIcon,
@@ -156,7 +157,7 @@ export default async function DashboardHome({ params }: Props) {
                 const productName = locale === 'fr' ? p.name_fr : p.name_en;
                 const ratio = p.reorderLevel > 0 ? Math.min(1, p.quantity / p.reorderLevel) : 0;
                 return (
-                  <div key={p.id} className="rounded-lg border p-3">
+                  <div key={`${p.id}-${p.size}`} className="rounded-lg border p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">

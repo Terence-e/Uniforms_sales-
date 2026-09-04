@@ -6,6 +6,7 @@ import {
   listTailorNames
 } from '@/actions/stock';
 import { listWaitingOrderCounts } from '@/actions/orders';
+import { getSizeConfig } from '@/actions/size-config';
 import { ProductionForm } from '@/components/forms/production-form';
 import { AdjustStockDialog } from '@/components/forms/adjust-stock-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -34,12 +35,13 @@ export default async function StockPage({ params }: Props) {
 
   // Fetched with the page rather than per selection: picking a product then
   // shows its waiting count instantly instead of waiting on a round trip.
-  const [products, stock, tailors, recent, waiting, t, tProd] = await Promise.all([
+  const [products, stock, tailors, recent, waiting, sizeConfig, t, tProd] = await Promise.all([
     listProducts(),
     listStock(),
     listTailorNames(),
     listRecentProduction(10),
     listWaitingOrderCounts(),
+    getSizeConfig(),
     getTranslations('Stock'),
     getTranslations('Production')
   ]);
@@ -54,7 +56,12 @@ export default async function StockPage({ params }: Props) {
         <p className="text-sm text-muted-foreground">{tProd('subtitle')}</p>
       </div>
 
-      <ProductionForm products={products} tailors={tailors} waiting={waiting} />
+      <ProductionForm
+        products={products}
+        tailors={tailors}
+        waiting={waiting}
+        sizes={sizeConfig.sizes}
+      />
 
       {recent.length > 0 ? (
         <Card>
@@ -70,11 +77,8 @@ export default async function StockPage({ params }: Props) {
                 <div className="min-w-0">
                   <span className="font-medium">
                     {movement.product ? name(movement.product) : '—'}
-                    {movement.product?.size ? (
-                      <span className="text-muted-foreground">
-                        {' '}
-                        ({movement.product.size})
-                      </span>
+                    {movement.size ? (
+                      <span className="text-muted-foreground"> ({movement.size})</span>
                     ) : null}
                   </span>
                   <span className="text-muted-foreground">
@@ -114,10 +118,10 @@ export default async function StockPage({ params }: Props) {
               </TableHeader>
               <TableBody>
                 {stock.map((product) => (
-                  <TableRow key={product.id}>
+                  <TableRow key={`${product.id}-${product.size}`}>
                     <TableCell className="font-medium">{name(product)}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {product.size ?? '—'}
+                      {product.size || '—'}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       <span className={product.isLow ? 'text-destructive font-medium' : ''}>
@@ -143,6 +147,7 @@ export default async function StockPage({ params }: Props) {
                           no product to pick (A-FR-5.5). */}
                       <AdjustStockDialog
                         productId={product.id}
+                        size={product.size}
                         productLabel={
                           product.size ? `${name(product)} — ${product.size}` : name(product)
                         }

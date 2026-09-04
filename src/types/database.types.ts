@@ -44,6 +44,8 @@ export type ReturnKind = 'return' | 'exchange';
 /** Declared by the seller, never assessed by the system (A-FR-8.9). */
 export type GarmentCondition = 'unworn' | 'worn';
 export type ReturnDirection = 'in' | 'out';
+
+export type SizeMode = 'letters' | 'metrics';
 export type OrderStatus =
   | 'ordered'
   | 'in_production'
@@ -83,6 +85,46 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [];
+      };
+      app_size_config: {
+        Row: {
+          id: boolean;
+          mode: SizeMode;
+          letters: string[];
+          metric_min: number;
+          metric_max: number;
+          metric_step: number;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: boolean;
+          mode?: SizeMode;
+          letters?: string[];
+          metric_min?: number;
+          metric_max?: number;
+          metric_step?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          id?: boolean;
+          mode?: SizeMode;
+          letters?: string[];
+          metric_min?: number;
+          metric_max?: number;
+          metric_step?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'app_size_config_updated_by_fkey';
+            columns: ['updated_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ];
       };
       notifications: {
         Row: {
@@ -191,8 +233,8 @@ export type Database = {
           name_en: string;
           name_fr: string;
           category: string;
-          size: string | null;
           unit_price: number;
+          reorder_level: number;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -203,8 +245,8 @@ export type Database = {
           name_en: string;
           name_fr: string;
           category?: string;
-          size?: string | null;
           unit_price: number;
+          reorder_level?: number;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -215,8 +257,8 @@ export type Database = {
           name_en?: string;
           name_fr?: string;
           category?: string;
-          size?: string | null;
           unit_price?: number;
+          reorder_level?: number;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -378,18 +420,21 @@ export type Database = {
       stock_levels: {
         Row: {
           product_id: string;
+          size: string;
           quantity: number;
           reorder_level: number;
           updated_at: string;
         };
         Insert: {
           product_id: string;
+          size?: string;
           quantity?: number;
           reorder_level?: number;
           updated_at?: string;
         };
         Update: {
           product_id?: string;
+          size?: string;
           quantity?: number;
           reorder_level?: number;
           updated_at?: string;
@@ -407,6 +452,7 @@ export type Database = {
         Row: {
           id: string;
           product_id: string;
+          size: string;
           kind: StockMovementKind;
           quantity: number;
           sale_id: string | null;
@@ -422,6 +468,7 @@ export type Database = {
         Insert: {
           id?: string;
           product_id: string;
+          size?: string;
           kind: StockMovementKind;
           quantity: number;
           sale_id?: string | null;
@@ -437,6 +484,7 @@ export type Database = {
         Update: {
           id?: string;
           product_id?: string;
+          size?: string;
           kind?: StockMovementKind;
           quantity?: number;
           sale_id?: string | null;
@@ -1141,6 +1189,7 @@ export type Database = {
       return_kind: ReturnKind;
       garment_condition: GarmentCondition;
       return_direction: ReturnDirection;
+      size_mode: SizeMode;
     };
     CompositeTypes: Record<never, never>;
   };
@@ -1169,3 +1218,4 @@ export type Return = Tables<'returns'>;
 export type ReturnItem = Tables<'return_items'>;
 export type ReturnPolicy = Tables<'return_policy'>;
 export type CollectionItem = Tables<'collection_items'>;
+export type AppSizeConfig = Tables<'app_size_config'>;

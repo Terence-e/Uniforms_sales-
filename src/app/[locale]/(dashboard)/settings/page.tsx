@@ -2,7 +2,9 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getProfile } from '@/actions/auth';
 import { listReturnPolicy } from '@/actions/return-policy';
+import { getSizeConfig } from '@/actions/size-config';
 import { ReturnPolicyForm } from '@/components/settings/return-policy-form';
+import { SizeConfigForm } from '@/components/settings/size-config-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -29,7 +31,7 @@ export default async function SettingsPage({ params }: Props) {
   const [profile, t] = await Promise.all([getProfile(), getTranslations('Settings')]);
   if (profile?.role !== 'super_admin') notFound();
 
-  const rows = await listReturnPolicy();
+  const [rows, sizeConfig] = await Promise.all([listReturnPolicy(), getSizeConfig()]);
 
   return (
     <div className="space-y-6">
@@ -37,6 +39,16 @@ export default async function SettingsPage({ params }: Props) {
         <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
         <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t('sizes')}</CardTitle>
+          <CardDescription>{t('sizesHelp')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SizeConfigForm config={sizeConfig.config} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

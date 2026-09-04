@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Trash2, Plus, Factory, ClipboardList } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { recordProductionBatch } from '@/actions/stock';
+import { SizeBar } from '@/components/forms/size-bar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -45,12 +46,15 @@ import {
 export function ProductionForm({
   products,
   tailors,
-  waiting
+  waiting,
+  sizes
 }: {
   products: ProductOption[];
   tailors: string[];
   /** product_id -> outstanding orders waiting on it (A-FR-9.11). */
   waiting: Record<string, WaitingCount>;
+  /** The configured size set: each production line names a size (A-FR-4.2). */
+  sizes: string[];
 }) {
   const t = useTranslations('Production');
   const tSales = useTranslations('Sales');
@@ -79,8 +83,7 @@ export function ProductionForm({
   const units = useMemo(() => totalUnits(watchedLines ?? []), [watchedLines]);
 
   const productLabel = (product: ProductOption) => {
-    const name = locale === 'fr' ? product.name_fr : product.name_en;
-    return product.size ? `${name} — ${product.size}` : name;
+    return locale === 'fr' ? product.name_fr : product.name_en;
   };
 
   function message(key?: string) {
@@ -213,6 +216,24 @@ export function ProductionForm({
                     <Trash2 className="size-4" />
                   </Button>
                 </div>
+
+                {/* Which size these garments are (A-FR-4.2). Stock is per size. */}
+                {chosen && sizes.length > 0 ? (
+                  <div className="sm:col-span-12">
+                    <SizeBar
+                      sizes={sizes}
+                      value={watchedLines?.[index]?.size ?? null}
+                      onChange={(next) =>
+                        setValue(`lines.${index}.size`, next ?? '', { shouldDirty: true })
+                      }
+                    />
+                    {lineErrors?.size ? (
+                      <p className="mt-1 text-xs text-destructive">
+                        {message(lineErrors.size.message)}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             );
           })}

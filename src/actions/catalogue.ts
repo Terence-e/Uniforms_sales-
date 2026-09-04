@@ -8,7 +8,7 @@ import { notify, OVERSIGHT } from '@/lib/notify';
 import { productSchema, type ProductInput } from '@/lib/validation/catalogue-schema';
 
 type FieldErrors = Partial<
-  Record<'name_en' | 'name_fr' | 'size' | 'category' | 'unit_price' | 'reorder_level', string>
+  Record<'name_en' | 'name_fr' | 'category' | 'unit_price' | 'reorder_level', string>
 >;
 
 export type ProductResult =
@@ -39,9 +39,9 @@ function slug(s: string) {
     .slice(0, 24);
 }
 
-function genSku(nameEn: string, size: string) {
+function genSku(nameEn: string) {
   const rand = Math.random().toString(36).slice(2, 6);
-  return [slug(nameEn) || 'item', slug(size), rand].filter(Boolean).join('-');
+  return [slug(nameEn) || 'item', rand].filter(Boolean).join('-');
 }
 
 /** All products, active and archived, with derived quantity + threshold. */
@@ -50,18 +50,21 @@ export async function listCatalogue() {
   const { data } = await supabase
     .from('products')
     .select(
-      `id, sku, name_en, name_fr, category, size, unit_price, is_active,
-       level:stock_levels ( quantity, reorder_level )`
+      `id, sku, name_en, name_fr, category, unit_price, reorder_level, is_active,
+       levels:stock_levels ( quantity )`
     )
     .order('is_active', { ascending: false })
     .order('name_en');
 
   return (data ?? []).map((p) => {
-    const level = Array.isArray(p.level) ? p.level[0] : p.level;
+    // stock_levels is now one row per (product, size); the catalogue overview
+    // sums them into a single on-hand figure per garment.
+    const levels = Array.isArray(p.levels) ? p.levels : p.levels ? [p.levels] : [];
+    const quantity = levels.reduce((sum, l) => sum + (l.quantity ?? 0), 0);
     return {
       ...p,
-      quantity: level?.quantity ?? 0,
-      reorderLevel: level?.reorder_level ?? 0
+      quantity,
+      reorderLevel: p.reorder_level
     };
   });
 }
@@ -87,38 +90,43 @@ export async function createProduct(
   const uid = await superAdminId();
   if (!uid) return { ok: false, error: 'forbidden' };
 
-  const { name_en, name_fr, size, category, unit_price, reorder_level } = p.data;
+  const { name_en, name_fr, category, unit_price, reorder_level } = p.data;
   const admin = createAdminClient();
 
-  // Duplicate warning (A-FR-4.4): same garment + size among active products.
+  // Duplicate warning (A-FR-4.4): same garment name among active products.
   if (!opts?.force) {
     const { data: dup } = await admin
       .from('products')
       .select('id')
       .eq('is_active', true)
       .ilike('name_en', name_en)
-      .eq('size', size)
       .limit(1);
     if (dup && dup.length > 0) return { ok: false, warning: 'duplicate' };
   }
 
   const { data: created, error } = await admin
     .from('products')
-    .insert({ sku: genSku(name_en, size), name_en, name_fr: name_fr || name_en, category, size, unit_price })
+    .insert({
+      sku: genSku(name_en),
+      name_en,
+      name_fr: name_fr || name_en,
+      category,
+      unit_price,
+      reorder_level
+    })
     .select('id')
     .single();
   if (error || !created) return { ok: false, error: error?.message ?? 'createFailed' };
 
-  await admin
-    .from('stock_levels')
-    .upsert({ product_id: created.id, reorder_level }, { onConflict: 'product_id' });
+  // stock_levels rows are created per (product, size) by the first movement --
+  // there is nothing to seed here. The low-stock threshold lives on the product.
 
   await logAudit({
     actorId: uid,
     action: 'product_created',
     targetTable: 'products',
     targetId: created.id,
-    newValue: { name_en, name_fr: name_fr || name_en, category, size, unit_price, reorder_level }
+    newValue: { name_en, name_fr: name_fr || name_en, category, unit_price, reorder_level }
   });
 
   revalidatePath('/', 'layout');
@@ -136,17 +144,17 @@ export async function updateProduct(
   const uid = await superAdminId();
   if (!uid) return { ok: false, error: 'forbidden' };
 
-  const { name_en, name_fr, size, category, unit_price, reorder_level } = p.data;
+  const { name_en, name_fr, category, unit_price, reorder_level } = p.data;
   const admin = createAdminClient();
 
   const { data: current } = await admin
     .from('products')
-    .select('name_en, name_fr, size, category, unit_price')
+    .select('name_en, name_fr, category, unit_price')
     .eq('id', id)
     .single();
   if (!current) return { ok: false, error: 'notFound' };
 
-  // Duplicate warning (A-FR-4.4): same garment + size among *other* active
+  // Duplicate warning (A-FR-4.4): same garment name among *other* active
   // products. Excludes the row being edited so re-saving it is never flagged.
   if (!opts?.force) {
     const { data: dup } = await admin
@@ -155,14 +163,13 @@ export async function updateProduct(
       .eq('is_active', true)
       .neq('id', id)
       .ilike('name_en', name_en)
-      .eq('size', size)
       .limit(1);
     if (dup && dup.length > 0) return { ok: false, warning: 'duplicate' };
   }
 
   const { error } = await admin
     .from('products')
-    .update({ name_en, name_fr: name_fr || name_en, size, category, unit_price })
+    .update({ name_en, name_fr: name_fr || name_en, category, unit_price, reorder_level })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
 
@@ -201,12 +208,8 @@ export async function updateProduct(
     targetTable: 'products',
     targetId: id,
     previousValue: current,
-    newValue: { name_en, name_fr: name_fr || name_en, size, category, unit_price }
+    newValue: { name_en, name_fr: name_fr || name_en, category, unit_price }
   });
-
-  await admin
-    .from('stock_levels')
-    .upsert({ product_id: id, reorder_level }, { onConflict: 'product_id' });
 
   revalidatePath('/', 'layout');
   return { ok: true };

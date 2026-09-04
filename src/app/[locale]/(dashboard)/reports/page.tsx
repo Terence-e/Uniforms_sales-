@@ -5,7 +5,7 @@ import { ReconExportButton } from '@/components/reports/recon-export-button';
 import { ReportControls } from '@/components/reports/report-controls';
 import { ReportView } from '@/components/reports/report-view';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { toDateInputValue } from '@/lib/format';
+import { SCHOOL, toDateInputValue } from '@/lib/format';
 import { isReportKey, type ReportKey } from '@/lib/report-types';
 
 type Props = {
@@ -47,22 +47,30 @@ export default async function ReportsPage({ params, searchParams }: Props) {
   const sfrom = rawSfrom && DATE_RE.test(rawSfrom) ? rawSfrom : monthStart;
   const sto = rawSto && DATE_RE.test(rawSto) ? rawSto : today;
 
-  const [recon, reportResult, stamp, t] = await Promise.all([
+  const [recon, reportResult, stamp, reconStamp, t] = await Promise.all([
     getDailyReconciliation(from, to),
     getReport(reportKey, sfrom, sto),
     reportStamp(sfrom, sto),
+    reportStamp(from, to),
     getTranslations('Reports')
   ]);
 
   return (
     <div className="space-y-6">
-      {/* Print-to-PDF (A-FR-12.5): show only the stamped report view, whatever
-          the dashboard chrome or the other sections on the page. */}
+      {/* Print-to-PDF (A-FR-12.5): isolate whichever section is being printed.
+          The suite prints by default; the reconciliation button adds
+          `printing-recon` to <body> to switch which area is shown. */}
       <style>{`
         @media print {
-          body * { visibility: hidden !important; }
-          .report-print-area, .report-print-area * { visibility: visible !important; }
-          .report-print-area { position: absolute; inset: 0; width: 100%; padding: 0; }
+          body:not(.printing-recon) * { visibility: hidden !important; }
+          body:not(.printing-recon) .report-print-area,
+          body:not(.printing-recon) .report-print-area * { visibility: visible !important; }
+          body:not(.printing-recon) .report-print-area { position: absolute; inset: 0; width: 100%; padding: 0; }
+
+          body.printing-recon * { visibility: hidden !important; }
+          body.printing-recon .recon-print-area,
+          body.printing-recon .recon-print-area * { visibility: visible !important; }
+          body.printing-recon .recon-print-area { position: absolute; inset: 0; width: 100%; padding: 0; }
         }
       `}</style>
 
@@ -71,15 +79,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
         <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
       </div>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">{t('recon.title')}</h2>
-          <p className="text-sm text-muted-foreground">{t('recon.range', { from, to })}</p>
-        </div>
-        <ReconExportButton from={from} to={to} />
-      </div>
-      <DailyReconciliation data={recon} locale={locale} />
-
+      {/* Report suite first, above the daily reconciliation. */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t('suite.title')}</CardTitle>
@@ -90,6 +90,28 @@ export default async function ReportsPage({ params, searchParams }: Props) {
           <ReportView result={reportResult} stamp={stamp} locale={locale} />
         </CardContent>
       </Card>
+
+      <div className="recon-print-area space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">{t('recon.title')}</h2>
+            <p className="text-sm text-muted-foreground">{t('recon.range', { from, to })}</p>
+          </div>
+          <ReconExportButton from={from} to={to} />
+        </div>
+
+        {/* Stamp shown only on the printed PDF (A-FR-12.5): school, range, and
+            who generated it when. */}
+        <div className="hidden print:block">
+          <h2 className="text-lg font-semibold">{SCHOOL.name} — {t('recon.title')}</h2>
+          <p className="text-sm">{t('recon.range', { from, to })}</p>
+          <p className="text-xs text-muted-foreground">
+            {t('suite.stamp', { name: reconStamp.generatedBy, at: reconStamp.generatedAt })}
+          </p>
+        </div>
+
+        <DailyReconciliation data={recon} locale={locale} />
+      </div>
     </div>
   );
 }

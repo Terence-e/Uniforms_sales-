@@ -16,6 +16,9 @@ import { z } from 'zod';
 
 export const productionLineSchema = z.object({
   productId: z.uuid({ message: 'required' }),
+  /** The size these garments are (A-FR-4.2): chosen from the configured set or
+   * typed as a custom size. Stock is tracked per (product, size). */
+  size: z.string().trim().min(1, { message: 'required' }).max(40),
   /**
    * Production only ever adds. An over-count is corrected with a compensating
    * 'adjustment' movement rather than a negative production row, so the ledger
@@ -49,6 +52,7 @@ export type ProductionBatchInput = z.input<typeof productionBatchSchema>;
 
 export const EMPTY_PRODUCTION_LINE: ProductionLineInput = {
   productId: '',
+  size: '',
   quantity: 1
 };
 
@@ -69,6 +73,8 @@ export function totalUnits(lines: readonly { quantity: unknown }[]): number {
  */
 export const adjustmentSchema = z.object({
   productId: z.uuid({ message: 'required' }),
+  /** Which size of the product is being corrected (stock is per size). */
+  size: z.string().trim().min(1, { message: 'required' }).max(40),
   /**
    * Signed and non-zero. Positive adds, negative removes -- a count that came
    * out two short is -2, not "remove 2", because the ledger reads as arithmetic

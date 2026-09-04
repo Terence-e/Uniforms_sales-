@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { logAudit } from '@/lib/audit';
-import { deductStockForSale, reservedByProduct } from '@/actions/stock';
+import { deductStockForSale, reservedByProductSize } from '@/actions/stock';
 import {
   computeLineTotal,
   computeTotals,
@@ -104,30 +104,31 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
    * row is the failure nobody ever notices.
    */
   const [{ data: levels }, reserved] = await Promise.all([
-    supabase.from('stock_levels').select('product_id, quantity').in('product_id', productIds),
-    reservedByProduct()
+    supabase.from('stock_levels').select('product_id, size, quantity').in('product_id', productIds),
+    reservedByProductSize()
   ]);
 
-  const inStock = new Map((levels ?? []).map((l) => [l.product_id, l.quantity]));
+  // Stock is per (product, size): the same shirt in size 8 and size 10 draws on
+  // two different shelves, so availability is checked per size the line names.
+  const key = (productId: string, size: string | null) => `${productId}|${size ?? ''}`;
+  const inStock = new Map((levels ?? []).map((l) => [key(l.product_id, l.size), l.quantity]));
 
-  // Summed per product first: three lines of the same shirt draw on one shelf,
-  // and checking each line alone would pass all three against the same stock.
-  const wantedPerProduct = new Map<string, number>();
+  // Summed per (product, size) first: two lines of the same shirt in the same
+  // size draw on one shelf, and checking each alone would pass both against it.
+  const wanted = new Map<string, number>();
   for (const item of sale.items) {
-    wantedPerProduct.set(
-      item.productId,
-      (wantedPerProduct.get(item.productId) ?? 0) + item.quantity
-    );
+    const k = key(item.productId, item.size);
+    wanted.set(k, (wanted.get(k) ?? 0) + item.quantity);
   }
 
   const shortfalls: Shortfall[] = [];
-  for (const [productId, wanted] of wantedPerProduct) {
-    const available = (inStock.get(productId) ?? 0) - (reserved[productId] ?? 0);
-    if (wanted > available) {
-      const line = sale.items.find((item) => item.productId === productId);
+  for (const [k, want] of wanted) {
+    const available = (inStock.get(k) ?? 0) - (reserved[k] ?? 0);
+    if (want > available) {
+      const line = sale.items.find((item) => key(item.productId, item.size) === k);
       shortfalls.push({
-        description: line?.description ?? productId,
-        requested: wanted,
+        description: line?.description ?? k,
+        requested: want,
         available
       });
     }
@@ -210,7 +211,11 @@ export async function createSale(input: SaleInput): Promise<CreateSaleResult> {
    */
   const stock = await deductStockForSale(
     inserted.id,
-    sale.items.map((item) => ({ productId: item.productId, quantity: item.quantity }))
+    sale.items.map((item) => ({
+      productId: item.productId,
+      size: item.size,
+      quantity: item.quantity
+    }))
   );
   if (!stock.ok) {
     console.error('sale recorded but stock not deducted', inserted.receipt_no, stock);
