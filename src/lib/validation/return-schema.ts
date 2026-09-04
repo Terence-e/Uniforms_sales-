@@ -49,9 +49,11 @@ export const returnedLineSchema = z
     { message: 'required', path: ['saleItemId'] }
   );
 
-/** A garment going out in exchange. A fresh catalogue pick, not an old line. */
+/** A garment going out in exchange. A fresh catalogue pick, not an old line.
+ * Its size is chosen at the counter (A-FR-4.2) since the product carries none. */
 export const outgoingLineSchema = z.object({
   productId: z.uuid({ message: 'selectProduct' }),
+  size: z.string().trim().max(40).nullable().default(null),
   quantity
 });
 

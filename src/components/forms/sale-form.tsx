@@ -29,6 +29,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { SignaturePad } from '@/components/signature-pad';
+import { SizeBar } from '@/components/forms/size-bar';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
@@ -50,7 +51,6 @@ export type ProductOption = {
   sku: string;
   name_en: string;
   name_fr: string;
-  size: string | null;
   unit_price: number;
   category: string;
   /**
@@ -83,12 +83,15 @@ const DEFAULTS: SaleInput = {
 export function SaleForm({
   products,
   staff,
-  currentUserId
+  currentUserId,
+  sizes
 }: {
   products: ProductOption[];
   /** Active staff, for the two attribution selectors (A-FR-6.4, A-FR-6.5). */
   staff: { id: string; full_name: string }[];
   currentUserId: string;
+  /** The configured size set shown as boxes on each line (A-FR-4.2). */
+  sizes: string[];
 }) {
   const t = useTranslations('Sales');
   const tv = useTranslations('Validation');
@@ -151,8 +154,7 @@ export function SaleForm({
   const changeDue = tenderedAmount - totals.total;
 
   const productLabel = (product: ProductOption) => {
-    const name = locale === 'fr' ? product.name_fr : product.name_en;
-    return product.size ? `${name} — ${product.size}` : name;
+    return locale === 'fr' ? product.name_fr : product.name_en;
   };
 
   /** Selecting a product pre-fills the line but leaves it editable. */
@@ -163,7 +165,9 @@ export function SaleForm({
     setValue(`items.${index}.description`, productLabel(product), {
       shouldDirty: true
     });
-    setValue(`items.${index}.size`, product.size, { shouldDirty: true });
+    // Size is no longer a product attribute (A-FR-4.2): the seller picks it from
+    // the size bar below. Clear any size carried over from a previous product.
+    setValue(`items.${index}.size`, null, { shouldDirty: true });
     // The catalogue price, shown for confirmation. The server re-reads it
     // anyway, so this is what the seller sees rather than what they send.
     setValue(`items.${index}.unitPrice`, product.unit_price, {
@@ -548,6 +552,20 @@ export function SaleForm({
                     <Trash2 className="size-4" />
                   </Button>
                 </div>
+
+                {/* Size bar, once a product is picked (A-FR-4.2). Sits on its
+                    own full-width row so the boxes have room on a phone. */}
+                {chosen && sizes.length > 0 ? (
+                  <div className="sm:col-span-12">
+                    <SizeBar
+                      sizes={sizes}
+                      value={watchedItems?.[index]?.size ?? null}
+                      onChange={(next) =>
+                        setValue(`items.${index}.size`, next, { shouldDirty: true })
+                      }
+                    />
+                  </div>
+                ) : null}
               </div>
             );
           })}

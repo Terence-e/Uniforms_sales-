@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { listRecentOrders } from '@/actions/orders';
 import { listProducts } from '@/actions/stock';
+import { getSizeConfig } from '@/actions/size-config';
 import { OrderForm } from '@/components/forms/order-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,9 +22,10 @@ export default async function OrdersPage({ params }: Props) {
   setRequestLocale(locale);
 
   // Same reasoning as the sales page: one round trip, not a waterfall.
-  const [products, recent, t] = await Promise.all([
+  const [products, recent, sizeConfig, t] = await Promise.all([
     listProducts(),
     listRecentOrders(8),
+    getSizeConfig(),
     getTranslations('Orders')
   ]);
 
@@ -34,7 +36,7 @@ export default async function OrdersPage({ params }: Props) {
           <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <OrderForm products={products} />
+        <OrderForm products={products} sizes={sizeConfig.sizes} />
       </div>
 
       <Card className="h-fit lg:sticky lg:top-6">

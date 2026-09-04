@@ -34,10 +34,13 @@ import { Textarea } from '@/components/ui/textarea';
  */
 export function AdjustStockDialog({
   productId,
+  size,
   productLabel,
   currentQuantity
 }: {
   productId: string;
+  /** The (product, size) bucket being corrected -- stock is tracked per size. */
+  size: string;
   productLabel: string;
   currentQuantity: number;
 }) {
@@ -66,6 +69,7 @@ export function AdjustStockDialog({
     startTransition(async () => {
       const result = await recordStockAdjustment({
         productId,
+        size,
         quantity: signed,
         reason
       });

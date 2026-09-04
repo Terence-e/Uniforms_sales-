@@ -66,6 +66,7 @@ export async function recordReturn(input: ReturnInput): Promise<RecordReturnResu
       })),
       p_out_items: value.outgoingItems.map((line) => ({
         product_id: line.productId,
+        size: line.size,
         quantity: line.quantity
       })),
       p_refund_method: value.refundMethod,
