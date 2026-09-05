@@ -1,0 +1,45 @@
+# Opens a reminder issue each quarter for Terence to sanity-check the handover
+# doc against reality (see CONTRIBUTING.md → "Quarterly sanity check").
+#
+# This is the automated backstop; the calendar entry is still the primary
+# reminder so the review does not depend on anyone watching GitHub.
+name: Quarterly handover-doc review
+
+on:
+  schedule:
+    # 08:00 UTC on the 1st of Jan, Apr, Jul, Oct.
+    - cron: '0 8 1 1,4,7,10 *'
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+
+jobs:
+  open-reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const quarter = Math.floor(new Date().getUTCMonth() / 3) + 1;
+            const year = new Date().getUTCFullYear();
+            const title = `Quarterly review: docs/handover.md (Q${quarter} ${year})`;
+            const body = [
+              'Time for the quarterly sanity check of the handover doc (CONTRIBUTING.md).',
+              '',
+              'Confirm `docs/handover.md` still matches reality:',
+              '- [ ] Deploy steps are current (Vercel + Supabase, env vars, `db:push`/`db:policies`).',
+              '- [ ] Restore procedure matches `docs/backup-restore.md`.',
+              '- [ ] First-account and password-reset steps are correct.',
+              '- [ ] Account structure (roles/counts) is accurate.',
+              '- [ ] Secrets registry `docs/secrets.md` lists every current secret.',
+              '',
+              '_Reviewer: Terence. Opened automatically; also on the calendar._'
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['docs', 'maintenance']
+            });
