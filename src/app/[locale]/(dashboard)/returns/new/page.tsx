@@ -11,6 +11,7 @@ import { ReturnForm } from '@/components/forms/return-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatDateTime, formatMoney } from '@/lib/format';
+import { canOperate } from '@/lib/roles';
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -56,6 +57,14 @@ export default async function NewReturnPage({ params, searchParams }: Props) {
   // RLS decides visibility: a sale the caller cannot see comes back empty,
   // which lands here as a 404 rather than a leak.
   if (!sale) notFound();
+
+  // This whole screen is one write: there is nothing here to read that the
+  // sale's own receipt does not already show. Administration has no write
+  // path anywhere (A-FR-2.2), so the page refuses outright rather than
+  // rendering a form the server would reject -- the same shape as
+  // /cancellations, /settings and /accounts, which 404 for the roles they
+  // are not for. record_return() enforces this independently regardless.
+  if (!canOperate(profile?.role)) notFound();
 
   // All four combinations, resolved before the form renders, so the verdict is
   // on screen before anything is entered (A-FR-8.10) and switches instantly

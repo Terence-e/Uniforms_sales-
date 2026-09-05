@@ -1,6 +1,8 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { listOpenJobs } from '@/actions/open-jobs';
+import { getProfile } from '@/actions/auth';
 import { OpenJobsBoard } from '@/components/open-jobs/open-jobs-board';
+import { canOperate } from '@/lib/roles';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -14,7 +16,11 @@ export default async function OpenJobsPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [jobs, t] = await Promise.all([listOpenJobs(), getTranslations('OpenJobs')]);
+  const [jobs, profile, t] = await Promise.all([
+    listOpenJobs(),
+    getProfile(),
+    getTranslations('OpenJobs')
+  ]);
 
   return (
     <div className="space-y-6">
@@ -25,7 +31,7 @@ export default async function OpenJobsPage({ params }: Props) {
 
       {/* Sorted oldest first on the server (A-FR-9.17); the board filters and
           searches that list without reordering it. */}
-      <OpenJobsBoard jobs={jobs} />
+      <OpenJobsBoard jobs={jobs} canOperate={canOperate(profile?.role)} />
     </div>
   );
 }

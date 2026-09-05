@@ -4,6 +4,7 @@
     "tagline": "Point of sale for school uniforms"
   },
   "Common": {
+    "readOnlyNotice": "Read-only: recording is disabled for your role.",
     "close": "Close",
     "loading": "Loading"
   },

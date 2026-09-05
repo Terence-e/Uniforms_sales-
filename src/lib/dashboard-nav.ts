@@ -18,6 +18,7 @@ import {
   type LucideIcon
 } from 'lucide-react';
 import type { UserRole } from '@/types/database.types';
+import { OPERATOR_ROLES } from '@/lib/roles';
 
 export type NavSection = 'overview' | 'operations' | 'records' | 'admin';
 
@@ -30,7 +31,10 @@ export type NavItem = {
 };
 
 const ALL: readonly UserRole[] = ['seller', 'administration', 'maintenance', 'super_admin'];
-const OPERATORS: readonly UserRole[] = ['seller', 'maintenance', 'super_admin'];
+// Shared with every screen that hides a write control from Administration, so
+// there is one list of "who can write" rather than this file's copy quietly
+// drifting from the rest of the app's.
+const OPERATORS: readonly UserRole[] = OPERATOR_ROLES;
 
 // Ordering here is the rendering order within each section.
 export const NAV_ITEMS: readonly NavItem[] = [

@@ -2,8 +2,10 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { isReprintRequest, logReprint } from '@/actions/reprints';
 import { getReturnWithItems } from '@/actions/returns';
+import { getProfile } from '@/actions/auth';
 import { ReturnReceipt, type ReturnReceiptData } from '@/components/receipt/return-receipt';
 import { referenceQrSvg } from '@/lib/qr';
+import { canOperate } from '@/lib/roles';
 
 type Props = {
   params: Promise<{ locale: string; id: string }>;
@@ -67,5 +69,7 @@ export default async function ReturnReceiptPage({ params, searchParams }: Props)
     items: row.items ?? []
   };
 
-  return <ReturnReceipt receipt={receipt} />;
+  const profile = await getProfile();
+
+  return <ReturnReceipt receipt={receipt} canOperate={canOperate(profile?.role)} />;
 }

@@ -6,9 +6,11 @@ import {
   listTailorNames
 } from '@/actions/stock';
 import { listWaitingOrderCounts } from '@/actions/orders';
+import { getProfile } from '@/actions/auth';
 import { getSizeConfig } from '@/actions/size-config';
 import { ProductionForm } from '@/components/forms/production-form';
 import { AdjustStockDialog } from '@/components/forms/adjust-stock-dialog';
+import { ReadOnlyNotice } from '@/components/read-only-notice';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -20,6 +22,7 @@ import {
   TableRow
 } from '@/components/ui/table';
 import { formatDate } from '@/lib/format';
+import { canOperate } from '@/lib/roles';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -35,19 +38,22 @@ export default async function StockPage({ params }: Props) {
 
   // Fetched with the page rather than per selection: picking a product then
   // shows its waiting count instantly instead of waiting on a round trip.
-  const [products, stock, tailors, recent, waiting, sizeConfig, t, tProd] = await Promise.all([
-    listProducts(),
-    listStock(),
-    listTailorNames(),
-    listRecentProduction(10),
-    listWaitingOrderCounts(),
-    getSizeConfig(),
-    getTranslations('Stock'),
-    getTranslations('Production')
-  ]);
+  const [products, stock, tailors, recent, waiting, profile, sizeConfig, t, tProd] =
+    await Promise.all([
+      listProducts(),
+      listStock(),
+      listTailorNames(),
+      listRecentProduction(10),
+      listWaitingOrderCounts(),
+      getProfile(),
+      getSizeConfig(),
+      getTranslations('Stock'),
+      getTranslations('Production')
+    ]);
 
   const name = (product: { name_en: string; name_fr: string }) =>
     locale === 'fr' ? product.name_fr : product.name_en;
+  const editable = canOperate(profile?.role);
 
   return (
     <div className="space-y-6">
@@ -56,12 +62,16 @@ export default async function StockPage({ params }: Props) {
         <p className="text-sm text-muted-foreground">{tProd('subtitle')}</p>
       </div>
 
-      <ProductionForm
-        products={products}
-        tailors={tailors}
-        waiting={waiting}
-        sizes={sizeConfig.sizes}
-      />
+      {editable ? (
+        <ProductionForm
+          products={products}
+          tailors={tailors}
+          waiting={waiting}
+          sizes={sizeConfig.sizes}
+        />
+      ) : (
+        <ReadOnlyNotice />
+      )}
 
       {recent.length > 0 ? (
         <Card>
@@ -113,7 +123,7 @@ export default async function StockPage({ params }: Props) {
                   <TableHead className="text-right">{t('inStock')}</TableHead>
                   <TableHead className="text-right">{t('reserved')}</TableHead>
                   <TableHead className="text-right">{t('available')}</TableHead>
-                  <TableHead className="w-0" />
+                  {editable ? <TableHead className="w-0" /> : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -142,18 +152,20 @@ export default async function StockPage({ params }: Props) {
                         {product.available}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right">
-                      {/* Opened from the row whose number is wrong, so there is
-                          no product to pick (A-FR-5.5). */}
-                      <AdjustStockDialog
-                        productId={product.id}
-                        size={product.size}
-                        productLabel={
-                          product.size ? `${name(product)} — ${product.size}` : name(product)
-                        }
-                        currentQuantity={product.quantity}
-                      />
-                    </TableCell>
+                    {editable ? (
+                      <TableCell className="text-right">
+                        {/* Opened from the row whose number is wrong, so there
+                            is no product to pick (A-FR-5.5). */}
+                        <AdjustStockDialog
+                          productId={product.id}
+                          size={product.size}
+                          productLabel={
+                            product.size ? `${name(product)} — ${product.size}` : name(product)
+                          }
+                          currentQuantity={product.quantity}
+                        />
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 ))}
               </TableBody>

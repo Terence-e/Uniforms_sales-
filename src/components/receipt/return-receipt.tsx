@@ -79,7 +79,19 @@ export type ReturnReceiptData = {
  *
  * Bilingual throughout, on the same shared A5 sheet as every other document.
  */
-export function ReturnReceipt({ receipt }: { receipt: ReturnReceiptData }) {
+export function ReturnReceipt({
+  receipt,
+  canOperate = false
+}: {
+  receipt: ReturnReceiptData;
+  /**
+   * Administration is read-only (A-FR-2.2). Reprint is a write -- rendering
+   * that URL stamps the sheet DUPLICATA / DUPLICATE and writes an audit row
+   * -- so it is withheld. Print and Back stay: looking at a document and
+   * sending it to a printer change nothing.
+   */
+  canOperate?: boolean;
+}) {
   const t = useTranslations('Returns');
   const locale = useLocale();
   const { paper, choose } = usePaperSize();
@@ -103,7 +115,7 @@ export function ReturnReceipt({ receipt }: { receipt: ReturnReceiptData }) {
         </Button>
         <div className="flex items-center gap-2">
           <PaperToggle paper={paper} onChange={choose} />
-          {!receipt.duplicate ? (
+          {!receipt.duplicate && canOperate ? (
             <Button asChild variant="outline" size="sm">
               <Link href={`/returns/${receipt.id}/receipt?reprint=1`}>
                 <Copy className="size-4" />

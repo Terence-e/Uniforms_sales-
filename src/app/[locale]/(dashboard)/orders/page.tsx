@@ -2,12 +2,15 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { listRecentOrders } from '@/actions/orders';
 import { listProducts } from '@/actions/stock';
+import { getProfile } from '@/actions/auth';
 import { getSizeConfig } from '@/actions/size-config';
 import { OrderForm } from '@/components/forms/order-form';
+import { ReadOnlyNotice } from '@/components/read-only-notice';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate, formatDateTime, formatMoney } from '@/lib/format';
+import { canOperate } from '@/lib/roles';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -22,9 +25,10 @@ export default async function OrdersPage({ params }: Props) {
   setRequestLocale(locale);
 
   // Same reasoning as the sales page: one round trip, not a waterfall.
-  const [products, recent, sizeConfig, t] = await Promise.all([
+  const [products, recent, profile, sizeConfig, t] = await Promise.all([
     listProducts(),
     listRecentOrders(8),
+    getProfile(),
     getSizeConfig(),
     getTranslations('Orders')
   ]);
@@ -36,7 +40,11 @@ export default async function OrdersPage({ params }: Props) {
           <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <OrderForm products={products} sizes={sizeConfig.sizes} />
+        {canOperate(profile?.role) ? (
+          <OrderForm products={products} sizes={sizeConfig.sizes} />
+        ) : (
+          <ReadOnlyNotice />
+        )}
       </div>
 
       <Card className="h-fit lg:sticky lg:top-6">

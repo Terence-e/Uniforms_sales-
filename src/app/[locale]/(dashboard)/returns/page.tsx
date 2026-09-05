@@ -2,10 +2,12 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { listReturns } from '@/actions/returns';
 import { listRecentSales } from '@/actions/sales';
+import { getProfile } from '@/actions/auth';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDateTime, formatMoney } from '@/lib/format';
+import { canOperate } from '@/lib/roles';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -26,14 +28,28 @@ export default async function ReturnsPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [returns, recent, t] = await Promise.all([
+  const [returns, recent, profile, t] = await Promise.all([
     listReturns(),
     listRecentSales(8),
+    getProfile(),
     getTranslations('Returns')
   ]);
+  // The ledger itself is a read -- Administration is meant to see how often
+  // the policy is set aside (A-FR-8.12). Starting one is a write, and
+  // /returns/new refuses the role outright, so the entry point goes too
+  // rather than leading somewhere that 404s.
+  const editable = canOperate(profile?.role);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+    <div
+      className={
+        editable
+          ? 'grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]'
+          : // Without the start-a-return card there is no second column, so the
+            // ledger takes the full width rather than sitting beside a gap.
+            'grid gap-6'
+      }
+    >
       <div className="space-y-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
@@ -105,32 +121,34 @@ export default async function ReturnsPage({ params }: Props) {
         </Card>
       </div>
 
-      <Card className="h-fit lg:sticky lg:top-6">
-        <CardHeader>
-          <CardTitle className="text-base">{t('startFromSale')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">{t('startHint')}</p>
-          {recent.map((sale) => (
-            <div
-              key={sale.id}
-              className="flex items-center justify-between gap-3 border-b pb-3 last:border-0 last:pb-0"
-            >
-              <div className="min-w-0">
-                <p className="truncate font-mono text-xs font-semibold">
-                  {sale.receipt_no}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {sale.customer_name} · {formatMoney(Number(sale.total), locale)}
-                </p>
+      {editable ? (
+        <Card className="h-fit lg:sticky lg:top-6">
+          <CardHeader>
+            <CardTitle className="text-base">{t('startFromSale')}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">{t('startHint')}</p>
+            {recent.map((sale) => (
+              <div
+                key={sale.id}
+                className="flex items-center justify-between gap-3 border-b pb-3 last:border-0 last:pb-0"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-mono text-xs font-semibold">
+                    {sale.receipt_no}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {sale.customer_name} · {formatMoney(Number(sale.total), locale)}
+                  </p>
+                </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/returns/new?sale=${sale.id}`}>{t('start')}</Link>
+                </Button>
               </div>
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/returns/new?sale=${sale.id}`}>{t('start')}</Link>
-              </Button>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

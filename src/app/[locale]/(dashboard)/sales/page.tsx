@@ -6,10 +6,12 @@ import { listStaff } from '@/actions/orders';
 import { getProfile } from '@/actions/auth';
 import { getSizeConfig } from '@/actions/size-config';
 import { SaleForm } from '@/components/forms/sale-form';
+import { ReadOnlyNotice } from '@/components/read-only-notice';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDateTime, formatMoney } from '@/lib/format';
+import { canOperate } from '@/lib/roles';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -41,12 +43,20 @@ export default async function SalesPage({ params }: Props) {
           <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <SaleForm
-          products={products}
-          staff={staff}
-          currentUserId={profile?.id ?? ''}
-          sizes={sizeConfig.sizes}
-        />
+        {/* Administration has no write path anywhere (A-FR-2.2); the form
+            that only ever results in a refused write is replaced by a notice
+            rather than shown disabled -- there is nothing to fill out that
+            could ever be submitted. */}
+        {canOperate(profile?.role) ? (
+          <SaleForm
+            products={products}
+            staff={staff}
+            currentUserId={profile?.id ?? ''}
+            sizes={sizeConfig.sizes}
+          />
+        ) : (
+          <ReadOnlyNotice />
+        )}
       </div>
 
       <Card className="h-fit lg:sticky lg:top-6">

@@ -48,9 +48,16 @@ import type { OrderStatus } from '@/types/database.types';
 type Props = {
   lineId: string;
   status: OrderStatus | null;
+  /**
+   * Administration has no write path anywhere (A-FR-2.2); can_operate() would
+   * refuse every one of these actions server-side regardless. The status badge
+   * still renders -- Administration reads the same list Mr. Ateba does -- only
+   * the buttons and their dialogs are withheld.
+   */
+  canOperate: boolean;
 };
 
-export function LineStatusControls({ lineId, status }: Props) {
+export function LineStatusControls({ lineId, status, canOperate }: Props) {
   const t = useTranslations('Orders');
   const tSales = useTranslations('Sales');
   const tv = useTranslations('Validation');
@@ -115,7 +122,7 @@ export function LineStatusControls({ lineId, status }: Props) {
         {t(`status.${status}`)}
       </Badge>
 
-      {isTerminal(status) ? null : (
+      {!canOperate || isTerminal(status) ? null : (
         <>
           {forward ? (
             <Button
@@ -163,107 +170,116 @@ export function LineStatusControls({ lineId, status }: Props) {
         </>
       )}
 
-      {/* ------------------------------------------------ step back */}
-      <Dialog open={revertOpen} onOpenChange={setRevertOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('stepBackTitle')}</DialogTitle>
-            <DialogDescription>
-              {back ? t('stepBackTo', { status: t(`status.${back}`) }) : null}
-            </DialogDescription>
-          </DialogHeader>
+      {/* Both dialogs are only ever opened from the buttons hidden above, so
+          their state can never flip true when read-only -- but skipping the
+          mount entirely leaves no interactive control in the DOM at all,
+          which is the more honest read of "no button that may lead to a
+          process". */}
+      {canOperate ? (
+        <>
+          {/* ------------------------------------------------ step back */}
+          <Dialog open={revertOpen} onOpenChange={setRevertOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t('stepBackTitle')}</DialogTitle>
+                <DialogDescription>
+                  {back ? t('stepBackTo', { status: t(`status.${back}`) }) : null}
+                </DialogDescription>
+              </DialogHeader>
 
-          <div className="space-y-2">
-            <Label htmlFor={`revert-reason-${lineId}`}>{t('reason')}</Label>
-            <Textarea
-              id={`revert-reason-${lineId}`}
-              rows={3}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              aria-invalid={Boolean(reasonError)}
-            />
-            {reasonError ? (
-              <p className="text-sm text-destructive">{reasonError}</p>
-            ) : null}
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor={`revert-reason-${lineId}`}>{t('reason')}</Label>
+                <Textarea
+                  id={`revert-reason-${lineId}`}
+                  rows={3}
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  aria-invalid={Boolean(reasonError)}
+                />
+                {reasonError ? (
+                  <p className="text-sm text-destructive">{reasonError}</p>
+                ) : null}
+              </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRevertOpen(false)}>
-              {t('cancelDialog')}
-            </Button>
-            <Button
-              disabled={isPending}
-              onClick={() => {
-                if (!reasonIsValid()) return;
-                run(() => revertOrderLine({ lineId, reason }));
-              }}
-            >
-              {t('confirmStepBack')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setRevertOpen(false)}>
+                  {t('cancelDialog')}
+                </Button>
+                <Button
+                  disabled={isPending}
+                  onClick={() => {
+                    if (!reasonIsValid()) return;
+                    run(() => revertOrderLine({ lineId, reason }));
+                  }}
+                >
+                  {t('confirmStepBack')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-      {/* ------------------------------------------------ cancel + refund */}
-      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('cancelTitle')}</DialogTitle>
-            <DialogDescription>{t('cancelHint')}</DialogDescription>
-          </DialogHeader>
+          {/* ------------------------------------------------ cancel + refund */}
+          <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t('cancelTitle')}</DialogTitle>
+                <DialogDescription>{t('cancelHint')}</DialogDescription>
+              </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>{t('refundMethod')}</Label>
-              <Select
-                value={refundMethod}
-                onValueChange={(value) => setRefundMethod(value as PaymentMethodValue)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_METHODS.map((method) => (
-                    <SelectItem key={method} value={method}>
-                      {tSales(`payment.${method}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>{t('refundMethod')}</Label>
+                  <Select
+                    value={refundMethod}
+                    onValueChange={(value) => setRefundMethod(value as PaymentMethodValue)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map((method) => (
+                        <SelectItem key={method} value={method}>
+                          {tSales(`payment.${method}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor={`cancel-reason-${lineId}`}>{t('reason')}</Label>
-              <Textarea
-                id={`cancel-reason-${lineId}`}
-                rows={3}
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-                aria-invalid={Boolean(reasonError)}
-              />
-              {reasonError ? (
-                <p className="text-sm text-destructive">{reasonError}</p>
-              ) : null}
-            </div>
-          </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`cancel-reason-${lineId}`}>{t('reason')}</Label>
+                  <Textarea
+                    id={`cancel-reason-${lineId}`}
+                    rows={3}
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                    aria-invalid={Boolean(reasonError)}
+                  />
+                  {reasonError ? (
+                    <p className="text-sm text-destructive">{reasonError}</p>
+                  ) : null}
+                </div>
+              </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelOpen(false)}>
-              {t('cancelDialog')}
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={isPending}
-              onClick={() => {
-                if (!reasonIsValid()) return;
-                run(() => cancelOrderLine({ lineId, reason, refundMethod }));
-              }}
-            >
-              {t('confirmCancel')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCancelOpen(false)}>
+                  {t('cancelDialog')}
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={isPending}
+                  onClick={() => {
+                    if (!reasonIsValid()) return;
+                    run(() => cancelOrderLine({ lineId, reason, refundMethod }));
+                  }}
+                >
+                  {t('confirmCancel')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      ) : null}
     </div>
   );
 }

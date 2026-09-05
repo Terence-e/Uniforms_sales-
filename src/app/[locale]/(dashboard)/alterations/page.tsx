@@ -1,12 +1,15 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { listAlterations } from '@/actions/alterations';
+import { getProfile } from '@/actions/auth';
 import { AlterationForm } from '@/components/forms/alteration-form';
+import { ReadOnlyNotice } from '@/components/read-only-notice';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { isOpen } from '@/lib/alteration-status';
 import { formatDate, formatMoney } from '@/lib/format';
+import { canOperate } from '@/lib/roles';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -20,8 +23,9 @@ export default async function AlterationsPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [alterations, t] = await Promise.all([
+  const [alterations, profile, t] = await Promise.all([
     listAlterations(20),
+    getProfile(),
     getTranslations('Alterations')
   ]);
 
@@ -32,7 +36,7 @@ export default async function AlterationsPage({ params }: Props) {
           <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <AlterationForm />
+        {canOperate(profile?.role) ? <AlterationForm /> : <ReadOnlyNotice />}
       </div>
 
       <Card className="h-fit lg:sticky lg:top-6">

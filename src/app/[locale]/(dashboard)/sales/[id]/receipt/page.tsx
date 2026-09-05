@@ -3,10 +3,12 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getSaleWithItems } from '@/actions/sales';
 import { listReturnsForSale } from '@/actions/returns';
+import { getProfile } from '@/actions/auth';
 import { Link } from '@/i18n/navigation';
 import { ReceiptPrint, type ReceiptData } from '@/components/receipt/receipt-print';
 import { formatDateTime } from '@/lib/format';
 import { referenceQrSvg } from '@/lib/qr';
+import { canOperate } from '@/lib/roles';
 
 type Props = {
   params: Promise<{ locale: string; id: string }>;
@@ -69,7 +71,10 @@ export default async function ReceiptPage({ params, searchParams }: Props) {
   // print:hidden -- the parent's copy of the sale is the sale. Each return has
   // its own RTN receipt, and printing them together would blur exactly the
   // separation this requirement is about.
-  const returns = await listReturnsForSale(sale.id);
+  const [returns, profile] = await Promise.all([
+    listReturnsForSale(sale.id),
+    getProfile()
+  ]);
 
   // Cancelling is for operators only -- Administration is read-only (A-FR-2.2).
   // The cancel_sale RPC enforces this too; hiding the button is the courtesy,
@@ -110,7 +115,7 @@ export default async function ReceiptPage({ params, searchParams }: Props) {
           </ul>
         </div>
       ) : null}
-      <ReceiptPrint receipt={receipt} />
+      <ReceiptPrint receipt={receipt} canOperate={canOperate(profile?.role)} />
     </>
   );
 }
