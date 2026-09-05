@@ -107,6 +107,16 @@ screens are not. Two flags gate the rest:
   `createSale`, so sales don't yet move stock. Wire it in once counts are being
   kept accurate, otherwise you get negative balances that look like real data.
 
+## Contributing & operations
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — the **docs-currency rule**: changes to
+  deploy / restore / admin / account structure update
+  [`docs/handover.md`](docs/handover.md) in the same PR; new secrets update
+  [`docs/secrets.md`](docs/secrets.md). Enforced via the PR template; Terence
+  reviews the handover doc quarterly.
+- Operator docs: [handover](docs/handover.md) · [backup & restore](docs/backup-restore.md)
+  · [secrets](docs/secrets.md) · [support](docs/support.md) · [security](docs/security.md).
+
 ## Notes
 
 - The request middleware lives in `src/proxy.ts` (Next 16 renamed the
