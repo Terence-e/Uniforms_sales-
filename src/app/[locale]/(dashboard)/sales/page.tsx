@@ -4,6 +4,7 @@ import { listRecentSales } from '@/actions/sales';
 import { listProducts } from '@/actions/stock';
 import { listStaff } from '@/actions/orders';
 import { getProfile } from '@/actions/auth';
+import { getSizeConfig } from '@/actions/size-config';
 import { SaleForm } from '@/components/forms/sale-form';
 import { ReadOnlyNotice } from '@/components/read-only-notice';
 import { Badge } from '@/components/ui/badge';
@@ -26,11 +27,12 @@ export default async function SalesPage({ params }: Props) {
 
   // Both hit the same connection pool; fetch them together rather than
   // waterfalling the product list behind the recent-sales query.
-  const [products, recent, staff, profile, t] = await Promise.all([
+  const [products, recent, staff, profile, sizeConfig, t] = await Promise.all([
     listProducts(),
     listRecentSales(8),
     listStaff(),
     getProfile(),
+    getSizeConfig(),
     getTranslations('Sales')
   ]);
 
@@ -50,6 +52,7 @@ export default async function SalesPage({ params }: Props) {
             products={products}
             staff={staff}
             currentUserId={profile?.id ?? ''}
+            sizes={sizeConfig.sizes}
           />
         ) : (
           <ReadOnlyNotice />

@@ -30,6 +30,7 @@ import {
   type OrderInput
 } from '@/lib/validation/order-schema';
 import type { ProductOption } from '@/components/forms/sale-form';
+import { SizeBar } from '@/components/forms/size-bar';
 
 /**
  * Order entry. Structurally the sale form plus an expected-ready date and a
@@ -54,7 +55,14 @@ const DEFAULTS: OrderInput = {
   notes: null
 };
 
-export function OrderForm({ products }: { products: ProductOption[] }) {
+export function OrderForm({
+  products,
+  sizes
+}: {
+  products: ProductOption[];
+  /** The configured size set shown as boxes on each line (A-FR-4.2). */
+  sizes: string[];
+}) {
   const t = useTranslations('Orders');
   const tSales = useTranslations('Sales');
   const tv = useTranslations('Validation');
@@ -89,8 +97,7 @@ export function OrderForm({ products }: { products: ProductOption[] }) {
   }, [watchedItems, watchedDiscount]);
 
   const productLabel = (product: ProductOption) => {
-    const name = locale === 'fr' ? product.name_fr : product.name_en;
-    return product.size ? `${name} — ${product.size}` : name;
+    return locale === 'fr' ? product.name_fr : product.name_en;
   };
 
   /** Selecting a product pre-fills the line but leaves it editable. */
@@ -99,7 +106,8 @@ export function OrderForm({ products }: { products: ProductOption[] }) {
     if (!product) return;
     setValue(`items.${index}.productId`, product.id, { shouldDirty: true });
     setValue(`items.${index}.description`, productLabel(product), { shouldDirty: true });
-    setValue(`items.${index}.size`, product.size, { shouldDirty: true });
+    // Size is chosen from the size bar below, not carried by the product.
+    setValue(`items.${index}.size`, null, { shouldDirty: true });
     setValue(`items.${index}.unitPrice`, product.unit_price, { shouldDirty: true });
   }
 
@@ -316,6 +324,19 @@ export function OrderForm({ products }: { products: ProductOption[] }) {
                     <Trash2 className="size-4" />
                   </Button>
                 </div>
+
+                {/* Size bar, once a product is picked (A-FR-4.2). */}
+                {watchedItems?.[index]?.productId && sizes.length > 0 ? (
+                  <div className="sm:col-span-12">
+                    <SizeBar
+                      sizes={sizes}
+                      value={watchedItems?.[index]?.size ?? null}
+                      onChange={(next) =>
+                        setValue(`items.${index}.size`, next, { shouldDirty: true })
+                      }
+                    />
+                  </div>
+                ) : null}
 
                 {/* A ticked line goes home with the parent today and never
                     enters the status workflow -- the server stores its status

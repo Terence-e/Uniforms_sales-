@@ -23,40 +23,60 @@ import type { StockMovementKind } from '@/types/database.types';
  * stock. Collection does (see collect_order_lines), and production does.
  */
 
+/** Composite key for a (product, size) stock bucket. */
+const levelKey = (productId: string, size: string) => `${productId}|${size}`;
+
 export async function listStock() {
   const supabase = await createClient();
   const { data } = await supabase
     .from('products')
     .select(
-      `id, sku, name_en, name_fr, category, size, unit_price, is_active,
-       level:stock_levels ( quantity, reorder_level )`
+      `id, sku, name_en, name_fr, category, unit_price, reorder_level, is_active,
+       levels:stock_levels ( size, quantity )`
     )
     .eq('is_active', true)
     .order('category')
     .order('name_en');
 
-  const reserved = await reservedByProduct();
+  const reserved = await reservedByProductSize();
 
-  return (data ?? []).map((product) => {
-    // stock_levels is one row per product, but PostgREST embeds it as an array
-    // because the foreign key lives on the stock_levels side.
-    const level = Array.isArray(product.level) ? product.level[0] : product.level;
-    const quantity = level?.quantity ?? 0;
-    const reorderLevel = level?.reorder_level ?? 0;
-    const reservedQty = reserved[product.id] ?? 0;
-    return {
-      ...product,
-      quantity,
-      reorderLevel,
-      // Derived, never stored: a second copy of this number would drift the
-      // moment an order moved to Ready without the copy being updated.
-      reserved: reservedQty,
-      // May go negative, and is shown that way. Hiding it would conceal the
-      // oversell it exists to reveal (A-FR-9.10).
-      available: quantity - reservedQty,
-      isLow: quantity <= reorderLevel
-    };
+  // One row per (product, size): stock is tracked per size now (A-FR-9.9). A
+  // product with no movements yet has no size rows and simply does not appear.
+  const rows = (data ?? []).flatMap((product) => {
+    const levels = Array.isArray(product.levels)
+      ? product.levels
+      : product.levels
+        ? [product.levels]
+        : [];
+    return levels.map((level) => {
+      const size = level.size ?? '';
+      const quantity = level.quantity ?? 0;
+      const reservedQty = reserved[levelKey(product.id, size)] ?? 0;
+      return {
+        id: product.id,
+        sku: product.sku,
+        name_en: product.name_en,
+        name_fr: product.name_fr,
+        category: product.category,
+        unit_price: product.unit_price,
+        size,
+        quantity,
+        reorderLevel: product.reorder_level,
+        // Derived, never stored: a second copy would drift the moment an order
+        // moved to Ready without the copy being updated.
+        reserved: reservedQty,
+        // May go negative, and is shown that way (A-FR-9.10).
+        available: quantity - reservedQty,
+        isLow: quantity <= product.reorder_level
+      };
+    });
   });
+
+  return rows.sort(
+    (a, b) =>
+      a.name_en.localeCompare(b.name_en) ||
+      a.size.localeCompare(b.size, undefined, { numeric: true })
+  );
 }
 
 /**
@@ -76,18 +96,19 @@ export async function listStock() {
  * reserve six. Lines with no product_id are free text and cannot be attributed,
  * so this is a floor rather than a total.
  */
-export async function reservedByProduct(): Promise<Record<string, number>> {
+export async function reservedByProductSize(): Promise<Record<string, number>> {
   const supabase = await createClient();
   const { data } = await supabase
     .from('order_items')
-    .select('product_id, quantity')
+    .select('product_id, size, quantity')
     .eq('status', 'ready')
     .not('product_id', 'is', null);
 
   const reserved: Record<string, number> = {};
   for (const line of data ?? []) {
     if (!line.product_id) continue;
-    reserved[line.product_id] = (reserved[line.product_id] ?? 0) + line.quantity;
+    const key = levelKey(line.product_id, line.size ?? '');
+    reserved[key] = (reserved[key] ?? 0) + line.quantity;
   }
   return reserved;
 }
@@ -105,6 +126,7 @@ export type StockMovementResult =
  */
 export async function recordStockMovement(params: {
   productId: string;
+  size: string;
   kind: StockMovementKind;
   quantity: number;
   saleId?: string | null;
@@ -122,6 +144,7 @@ export async function recordStockMovement(params: {
 
   const { error } = await supabase.from('stock_movements').insert({
     product_id: params.productId,
+    size: params.size,
     kind: params.kind,
     quantity: params.quantity,
     sale_id: params.saleId ?? null,
@@ -140,6 +163,7 @@ export async function recordStockMovement(params: {
     targetId: params.productId,
     newValue: {
       kind: params.kind,
+      size: params.size,
       quantity: params.quantity,
       sale_id: params.saleId ?? null,
       note: params.note ?? null
@@ -164,12 +188,13 @@ export async function recordStockMovement(params: {
  */
 export async function deductStockForSale(
   saleId: string,
-  lines: { productId: string | null; quantity: number }[]
+  lines: { productId: string | null; size: string | null; quantity: number }[]
 ): Promise<StockMovementResult> {
   for (const line of lines) {
     if (!line.productId) continue;
     const result = await recordStockMovement({
       productId: line.productId,
+      size: line.size ?? '',
       kind: 'sale',
       quantity: -Math.abs(line.quantity),
       saleId
@@ -198,22 +223,37 @@ export async function listProducts() {
   const [{ data }, reserved] = await Promise.all([
     supabase
       .from('products')
-      .select('id, sku, name_en, name_fr, size, unit_price, category, level:stock_levels ( quantity )')
+      .select('id, sku, name_en, name_fr, unit_price, category, levels:stock_levels ( size, quantity )')
       .eq('is_active', true)
       .order('category')
       .order('name_en'),
-    reservedByProduct()
+    reservedByProductSize()
   ]);
 
+  // One option per product (size is picked on the line). The availability shown
+  // here is the total across sizes -- a rough at-a-glance figure; the real
+  // per-size check happens at sale time against the chosen size.
   return (data ?? []).map((product) => {
-    const level = Array.isArray(product.level) ? product.level[0] : product.level;
-    const quantity = level?.quantity ?? 0;
-    const reservedQty = reserved[product.id] ?? 0;
+    const levels = Array.isArray(product.levels)
+      ? product.levels
+      : product.levels
+        ? [product.levels]
+        : [];
+    const inStock = levels.reduce((sum, l) => sum + (l.quantity ?? 0), 0);
+    const reservedQty = levels.reduce(
+      (sum, l) => sum + (reserved[levelKey(product.id, l.size ?? '')] ?? 0),
+      0
+    );
     return {
-      ...product,
-      inStock: quantity,
+      id: product.id,
+      sku: product.sku,
+      name_en: product.name_en,
+      name_fr: product.name_fr,
+      unit_price: product.unit_price,
+      category: product.category,
+      inStock,
       reserved: reservedQty,
-      available: quantity - reservedQty
+      available: inStock - reservedQty
     };
   });
 }
@@ -256,6 +296,7 @@ export async function recordProductionBatch(
   const { data, error } = await supabase.rpc('record_production_batch', {
     p_lines: batch.lines.map((line) => ({
       product_id: line.productId,
+      size: line.size,
       quantity: line.quantity
     })),
     p_occurred_on: batch.occurredOn,
@@ -305,8 +346,8 @@ export async function listRecentProduction(limit = 20) {
   const { data } = await supabase
     .from('stock_movements')
     .select(
-      `id, quantity, occurred_on, tailor_name, note, batch_id, created_at,
-       product:products ( name_en, name_fr, size )`
+      `id, size, quantity, occurred_on, tailor_name, note, batch_id, created_at,
+       product:products ( name_en, name_fr )`
     )
     .eq('kind', 'production')
     .order('occurred_on', { ascending: false })
@@ -355,16 +396,17 @@ export async function recordStockAdjustment(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthorized' };
 
-  const { productId, quantity, reason } = parsed.data;
+  const { productId, size, quantity, reason } = parsed.data;
 
   const { data: product } = await supabase
     .from('products')
-    .select('name_en, size')
+    .select('name_en')
     .eq('id', productId)
     .single();
 
   const { error } = await supabase.from('stock_movements').insert({
     product_id: productId,
+    size,
     kind: 'adjustment',
     quantity,
     note: reason,
@@ -384,12 +426,12 @@ export async function recordStockAdjustment(
     actorId: user.id,
     actorName: profile?.full_name ?? user.email ?? null,
     action: 'stock_adjusted',
-    entity: product ? `${product.name_en}${product.size ? ` (${product.size})` : ''}` : productId,
+    entity: product ? `${product.name_en}${size ? ` (${size})` : ''}` : productId,
     targetTable: 'stock_movements',
     targetId: productId,
     // The reason is the point of the record, so it goes in the audit row too
     // rather than only in the movement it describes.
-    meta: { product_id: productId, quantity, reason }
+    meta: { product_id: productId, size, quantity, reason }
   });
 
   revalidatePath('/stock', 'page');

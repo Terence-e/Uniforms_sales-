@@ -3,6 +3,7 @@ import { Link } from '@/i18n/navigation';
 import { listRecentOrders } from '@/actions/orders';
 import { listProducts } from '@/actions/stock';
 import { getProfile } from '@/actions/auth';
+import { getSizeConfig } from '@/actions/size-config';
 import { OrderForm } from '@/components/forms/order-form';
 import { ReadOnlyNotice } from '@/components/read-only-notice';
 import { Badge } from '@/components/ui/badge';
@@ -24,10 +25,11 @@ export default async function OrdersPage({ params }: Props) {
   setRequestLocale(locale);
 
   // Same reasoning as the sales page: one round trip, not a waterfall.
-  const [products, recent, profile, t] = await Promise.all([
+  const [products, recent, profile, sizeConfig, t] = await Promise.all([
     listProducts(),
     listRecentOrders(8),
     getProfile(),
+    getSizeConfig(),
     getTranslations('Orders')
   ]);
 
@@ -39,7 +41,7 @@ export default async function OrdersPage({ params }: Props) {
           <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         {canOperate(profile?.role) ? (
-          <OrderForm products={products} />
+          <OrderForm products={products} sizes={sizeConfig.sizes} />
         ) : (
           <ReadOnlyNotice />
         )}

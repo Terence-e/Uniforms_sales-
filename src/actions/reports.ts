@@ -362,6 +362,31 @@ export async function exportReconciliationToExcel(
   };
 }
 
+/**
+ * Audits a PDF export of the daily reconciliation (A-FR-12.6). Like the report
+ * suite's PDF, the file is produced by the browser's print-to-PDF from the
+ * stamped on-screen view, so there is nothing to build here -- only the audit
+ * row every export requires.
+ */
+export async function logReconciliationPrint(
+  from: string,
+  to: string
+): Promise<{ ok: boolean }> {
+  const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false };
+
+  await logAudit({
+    actorId: user.id,
+    action: 'export_generated',
+    targetTable: 'sales',
+    newValue: { report: 'reconciliation', format: 'pdf', from, to }
+  });
+  return { ok: true };
+}
+
 // ==================================================================
 // Report suite (A-FR-12.3). Every report is normalised to ReportResult so one
 // table renderer, one Excel builder and one print view serve all of them. All
@@ -511,7 +536,7 @@ export async function getReport(
     case 'production': {
       const { data } = await admin
         .from('stock_movements')
-        .select('quantity, product:products!stock_movements_product_id_fkey ( name_en, size )')
+        .select('quantity, size, product:products!stock_movements_product_id_fkey ( name_en )')
         .eq('kind', 'production')
         .gte('occurred_on', from)
         .lte('occurred_on', to);
@@ -520,7 +545,8 @@ export async function getReport(
       for (const m of data ?? []) {
         const p = Array.isArray(m.product) ? m.product[0] : m.product;
         const productName = (p as { name_en?: string } | null)?.name_en ?? '—';
-        const size = (p as { size?: string | null } | null)?.size ?? '';
+        // Size now lives on the movement, not the product.
+        const size = m.size ?? '';
         const k = `${productName}${size}`;
         const cur = byProduct.get(k) ?? { product: productName, size, units: 0 };
         cur.units += num(m.quantity);

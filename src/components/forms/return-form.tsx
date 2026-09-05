@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SizeBar } from '@/components/forms/size-bar';
 import {
   Select,
   SelectContent,
@@ -51,12 +52,11 @@ type Product = {
   id: string;
   name_en: string;
   name_fr: string | null;
-  size: string | null;
   unit_price: number;
   available: number;
 };
 
-type OutgoingLine = { productId: string; quantity: number };
+type OutgoingLine = { productId: string; size: string | null; quantity: number };
 
 /**
  * Recording a return or exchange against a sale (A-FR-8.1 to A-FR-8.6).
@@ -79,7 +79,8 @@ export function ReturnForm({
   products,
   staff,
   currentUserId,
-  verdicts
+  verdicts,
+  sizes
 }: {
   saleId: string;
   receiptNo: string;
@@ -87,6 +88,8 @@ export function ReturnForm({
   products: Product[];
   staff: { id: string; full_name: string }[];
   currentUserId: string;
+  /** The configured size set for the outgoing (exchange) garment (A-FR-4.2). */
+  sizes: string[];
   /**
    * All four combinations, keyed `${kind}:${condition}`, resolved on the server
    * before this page rendered (A-FR-8.10).
@@ -187,7 +190,11 @@ export function ReturnForm({
             kind === 'exchange'
               ? outgoing
                   .filter((line) => line.productId && line.quantity > 0)
-                  .map((line) => ({ productId: line.productId, quantity: line.quantity }))
+                  .map((line) => ({
+                    productId: line.productId,
+                    size: line.size,
+                    quantity: line.quantity
+                  }))
               : [],
           // Sent regardless of the prediction: the server decides which one it
           // actually needs, and sending both costs nothing.
@@ -424,9 +431,7 @@ export function ReturnForm({
                     <SelectContent>
                       {products.map((product) => (
                         <SelectItem key={product.id} value={product.id}>
-                          {product.name_en}
-                          {product.size ? ` — ${product.size}` : ''} ·{' '}
-                          {formatMoney(Number(product.unit_price))}
+                          {product.name_en} · {formatMoney(Number(product.unit_price))}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -460,6 +465,21 @@ export function ReturnForm({
                 >
                   {t('remove')}
                 </Button>
+
+                {/* Size of the outgoing garment (A-FR-4.2), once one is chosen. */}
+                {line.productId && sizes.length > 0 ? (
+                  <div className="w-full">
+                    <SizeBar
+                      sizes={sizes}
+                      value={line.size}
+                      onChange={(next) =>
+                        setOutgoing((current) =>
+                          current.map((item, i) => (i === index ? { ...item, size: next } : item))
+                        )
+                      }
+                    />
+                  </div>
+                ) : null}
               </div>
             ))}
             <Button
@@ -467,7 +487,7 @@ export function ReturnForm({
               variant="outline"
               size="sm"
               onClick={() =>
-                setOutgoing((current) => [...current, { productId: '', quantity: 1 }])
+                setOutgoing((current) => [...current, { productId: '', size: null, quantity: 1 }])
               }
             >
               {t('addOutgoing')}

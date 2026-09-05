@@ -6,6 +6,7 @@ import { verdictsForSale } from '@/actions/return-policy';
 import { listProducts } from '@/actions/stock';
 import { listStaff } from '@/actions/orders';
 import { getProfile } from '@/actions/auth';
+import { getSizeConfig } from '@/actions/size-config';
 import { ReturnForm } from '@/components/forms/return-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -44,11 +45,12 @@ export default async function NewReturnPage({ params, searchParams }: Props) {
     );
   }
 
-  const [sale, products, staff, profile] = await Promise.all([
+  const [sale, products, staff, profile, sizeConfig] = await Promise.all([
     getSaleForReturn(saleId),
     listProducts(),
     listStaff(),
-    getProfile()
+    getProfile(),
+    getSizeConfig()
   ]);
 
   // RLS decides visibility: a sale the caller cannot see comes back empty,
@@ -101,6 +103,7 @@ export default async function NewReturnPage({ params, searchParams }: Props) {
         staff={staff}
         currentUserId={profile?.id ?? ''}
         verdicts={verdicts}
+        sizes={sizeConfig.sizes}
       />
     </div>
   );

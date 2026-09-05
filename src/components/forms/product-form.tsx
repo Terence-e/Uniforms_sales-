@@ -23,7 +23,6 @@ type Product = {
   id: string;
   name_en: string;
   name_fr: string;
-  size: string | null;
   category: string;
   unit_price: number;
   reorderLevel: number;
@@ -31,7 +30,7 @@ type Product = {
 
 type FieldErrors = Record<string, string>;
 
-export function ProductForm({ product, sizes = [] }: { product?: Product; sizes?: string[] }) {
+export function ProductForm({ product }: { product?: Product }) {
   const t = useTranslations('Catalogue');
   const tv = useTranslations('Validation');
   const router = useRouter();
@@ -44,7 +43,6 @@ export function ProductForm({ product, sizes = [] }: { product?: Product; sizes?
 
   const [nameEn, setNameEn] = useState(product?.name_en ?? '');
   const [nameFr, setNameFr] = useState(product?.name_fr ?? '');
-  const [size, setSize] = useState(product?.size ?? '');
   const [category, setCategory] = useState(product?.category ?? 'uniform');
   const [price, setPrice] = useState(product ? String(product.unit_price) : '');
   const [threshold, setThreshold] = useState(product ? String(product.reorderLevel) : '0');
@@ -55,7 +53,6 @@ export function ProductForm({ product, sizes = [] }: { product?: Product; sizes?
     if (!isEdit) {
       setNameEn('');
       setNameFr('');
-      setSize('');
       setCategory('uniform');
       setPrice('');
       setThreshold('0');
@@ -68,7 +65,6 @@ export function ProductForm({ product, sizes = [] }: { product?: Product; sizes?
     const input = {
       name_en: nameEn,
       name_fr: nameFr,
-      size,
       category,
       unit_price: price,
       reorder_level: threshold
@@ -140,25 +136,6 @@ export function ProductForm({ product, sizes = [] }: { product?: Product; sizes?
             <div className="space-y-1.5">
               <Label htmlFor="name_fr">{t('garmentFr')}</Label>
               <Input id="name_fr" value={nameFr} onChange={(e) => setNameFr(e.target.value)} placeholder={nameEn} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="size">{t('size')}</Label>
-              {/* Free text with autocomplete of previously-entered sizes: the
-                  existing '10' surfaces before the user retypes it as 'Size 10',
-                  yet both may coexist deliberately. */}
-              <Input
-                id="size"
-                list="product-size-options"
-                autoComplete="off"
-                value={size}
-                onChange={(e) => setSize(e.target.value)}
-              />
-              <datalist id="product-size-options">
-                {sizes.map((s) => (
-                  <option key={s} value={s} />
-                ))}
-              </datalist>
-              {field('size')}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="category">{t('category')}</Label>
