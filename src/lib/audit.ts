@@ -162,6 +162,9 @@ export const AUDIT_ACTIONS = [
   'stock_movement',
   'account_created',
   'account_password_reset',
+  'account_activated',
+  'account_deactivated',
+  'account_deleted',
   'profile_updated',
   'password_changed'
 ] as const;

@@ -62,7 +62,9 @@ export function LoginForm({ redirectTo }: { redirectTo: string | null }) {
         ? t('invalidCredentials')
         : state.error === 'tooManyAttempts'
           ? t('tooManyAttempts')
-          : t('unexpectedError');
+          : state.error === 'accountInactive'
+            ? t('accountInactive')
+            : t('unexpectedError');
     toast.error(message);
   }, [state, t]);
 

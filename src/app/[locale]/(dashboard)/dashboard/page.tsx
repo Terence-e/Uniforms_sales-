@@ -15,7 +15,7 @@ import { listStock } from '@/actions/stock';
 import { DashboardChart } from '@/components/dashboard/dashboard-chart';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatDateTime, formatMoney, toDateInputValue } from '@/lib/format';
+import { formatDateTime, formatMoney, startOfMonth, endOfMonth } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@/types/database.types';
 
@@ -40,7 +40,6 @@ export default async function DashboardHome({ params }: Props) {
   setRequestLocale(locale);
 
   const today = new Date();
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
   // Cached from the layout's call -- effectively free here.
   const profile = await getProfile();
@@ -49,7 +48,8 @@ export default async function DashboardHome({ params }: Props) {
 
   const [t, summary, chart, recent, stock, users] = await Promise.all([
     getTranslations('Dashboard'),
-    getSalesSummary(toDateInputValue(monthStart), toDateInputValue(today)),
+    // The month tile covers the whole current month, first day to last day.
+    getSalesSummary(startOfMonth(today), endOfMonth(today)),
     getDashboardChart('monthly', 'sales'),
     listRecentSales(6),
     listStock(),

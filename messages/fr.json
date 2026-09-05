@@ -94,7 +94,19 @@
     "resetPassword": "R\u00e9initialiser le mot de passe",
     "resetFailed": "Impossible de r\u00e9initialiser le mot de passe.",
     "resetDoneTitle": "Mot de passe temporaire d\u00e9fini",
-    "resetDoneBody": "Partagez-le avec {name} de fa\u00e7on s\u00e9curis\u00e9e. Il devra le changer \u00e0 la prochaine connexion."
+    "resetDoneBody": "Partagez-le avec {name} de fa\u00e7on s\u00e9curis\u00e9e. Il devra le changer \u00e0 la prochaine connexion.",
+    "deactivate": "D\u00e9sactiver",
+    "activate": "Activer",
+    "delete": "Supprimer",
+    "cancel": "Annuler",
+    "deleteConfirmTitle": "Supprimer ce compte ?",
+    "deleteConfirmBody": "{name} sera supprim\u00e9 d\u00e9finitivement. Si le compte a une activit\u00e9 enregistr\u00e9e, la suppression est refus\u00e9e \u2014 d\u00e9sactivez-le plut\u00f4t afin que son nom reste attach\u00e9 \u00e0 ce qu'il a fait.",
+    "deactivatedToast": "{name} d\u00e9sactiv\u00e9.",
+    "activatedToast": "{name} activ\u00e9.",
+    "deletedToast": "{name} supprim\u00e9.",
+    "cannotSelf": "Vous ne pouvez pas faire cela sur votre propre compte.",
+    "hasActivity": "Ce compte a une activit\u00e9 enregistr\u00e9e et ne peut pas \u00eatre supprim\u00e9. D\u00e9sactivez-le plut\u00f4t.",
+    "actionFailed": "Impossible d'effectuer cette action."
   },
   "Notifications": {
     "title": "Notifications",
@@ -114,7 +126,8 @@
       "sale_recorded": { "title": "Nouvelle vente", "body": "{receipt} \u00b7 {total}" },
       "sale_cancelled": { "title": "Vente annul\u00e9e", "body": "{receipt}" },
       "order_placed": { "title": "Nouvelle commande", "body": "{order}" },
-      "price_changed": { "title": "Prix modifi\u00e9", "body": "{product}" }
+      "price_changed": { "title": "Prix modifi\u00e9", "body": "{product}" },
+      "bug_reported": { "title": "Message d'assistance", "body": "De {reporter} \u2014 appuyez pour lire" }
     }
   },
   "Audit": {
@@ -154,6 +167,9 @@
       "stock_movement": "Mouvement de stock",
       "account_created": "Compte cr\u00e9\u00e9",
       "account_password_reset": "Mot de passe r\u00e9initialis\u00e9",
+      "account_activated": "Compte activ\u00e9",
+      "account_deactivated": "Compte d\u00e9sactiv\u00e9",
+      "account_deleted": "Compte supprim\u00e9",
       "profile_updated": "Profil mis \u00e0 jour",
       "password_changed": "Mot de passe modifi\u00e9"
     }
@@ -321,6 +337,7 @@
     "invalidCredentials": "E-mail ou mot de passe incorrect.",
     "unexpectedError": "Une erreur est survenue. Veuillez r\u00e9essayer.",
     "tooManyAttempts": "Trop de tentatives \u00e9chou\u00e9es. R\u00e9essayez dans quelques minutes.",
+    "accountInactive": "Ce compte a \u00e9t\u00e9 d\u00e9sactiv\u00e9. Contactez votre administrateur.",
     "sessionExpired": "Votre session a expir\u00e9. Veuillez vous reconnecter."
   },
   "Search": {
