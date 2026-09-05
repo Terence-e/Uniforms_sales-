@@ -67,6 +67,20 @@ export async function signIn(
     return { error: 'invalidCredentials', fieldErrors: {} };
   }
 
+  // A-FR-P4: a deactivated account cannot log in. Credentials still verify (so we
+  // do not leak whether the address exists), but the session is dropped
+  // immediately and login is refused.
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('is_active')
+    .eq('id', data.user!.id)
+    .single();
+  if (prof && !prof.is_active) {
+    await supabase.auth.signOut();
+    await logAudit({ action: 'login_blocked', ip, meta: { email, reason: 'inactive' } });
+    return { error: 'accountInactive', fieldErrors: {} };
+  }
+
   await logAudit({ actorId: data.user?.id ?? null, action: 'login_success', ip, meta: { email } });
 
   // Stamp the session start so the proxy can enforce a per-role timeout.

@@ -4,6 +4,7 @@ import { getProfile } from '@/actions/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { CreateAccountForm } from '@/components/forms/create-account-form';
 import { ResetPasswordButton } from '@/components/forms/reset-password-button';
+import { AccountActions } from '@/components/forms/account-actions';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -116,7 +117,15 @@ export default async function AccountsPage({ params }: Props) {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <ResetPasswordButton userId={r.id} name={r.full_name || r.email} />
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        <ResetPasswordButton userId={r.id} name={r.full_name || r.email} />
+                        <AccountActions
+                          userId={r.id}
+                          name={r.full_name || r.email}
+                          isActive={r.is_active}
+                          isSelf={r.id === profile.id}
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

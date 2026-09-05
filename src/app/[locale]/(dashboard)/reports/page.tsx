@@ -5,7 +5,7 @@ import { ReconExportButton } from '@/components/reports/recon-export-button';
 import { ReportControls } from '@/components/reports/report-controls';
 import { ReportView } from '@/components/reports/report-view';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { SCHOOL, toDateInputValue } from '@/lib/format';
+import { SCHOOL, toDateInputValue, startOfMonth, endOfMonth } from '@/lib/format';
 import { isReportKey, type ReportKey } from '@/lib/report-types';
 
 type Props = {
@@ -35,17 +35,17 @@ export default async function ReportsPage({ params, searchParams }: Props) {
     await searchParams;
   const now = new Date();
   const today = toDateInputValue(now);
-  const monthStart = toDateInputValue(new Date(now.getFullYear(), now.getMonth(), 1));
 
   // The daily reconciliation defaults to today. Reject non-dates before new Date().
   const from = rawFrom && DATE_RE.test(rawFrom) ? rawFrom : today;
   const to = rawTo && DATE_RE.test(rawTo) ? rawTo : today;
 
-  // The report suite has its own range (defaults to month-to-date) and selected
-  // report, so it never fights the reconciliation's date filter.
+  // The report suite has its own range and selected report, so it never fights
+  // the reconciliation's date filter. It defaults to the whole current month --
+  // the first day to the last day (A-FR: a month is a full calendar month).
   const reportKey: ReportKey = rawReport && isReportKey(rawReport) ? rawReport : 'sales-by-period';
-  const sfrom = rawSfrom && DATE_RE.test(rawSfrom) ? rawSfrom : monthStart;
-  const sto = rawSto && DATE_RE.test(rawSto) ? rawSto : today;
+  const sfrom = rawSfrom && DATE_RE.test(rawSfrom) ? rawSfrom : startOfMonth(now);
+  const sto = rawSto && DATE_RE.test(rawSto) ? rawSto : endOfMonth(now);
 
   const [recon, reportResult, stamp, reconStamp, t] = await Promise.all([
     getDailyReconciliation(from, to),

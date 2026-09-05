@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { notify } from '@/lib/notify';
 
 /**
  * In-app bug reports: the failures Sentry never sees.
@@ -78,6 +79,17 @@ export async function submitBugReport(
   });
 
   if (error) return { ok: false, error: error.message };
+
+  // Send it to the people who action reports so it is not just sitting on a
+  // page nobody thought to open (the Super Admin, and Maintenance who read the
+  // same list). Best-effort -- a failed notification never fails the report.
+  await notify({
+    type: 'bug_reported',
+    recipients: { kind: 'roles', roles: ['maintenance', 'super_admin'] },
+    excludeActorId: user.id,
+    data: { reporter: profile?.full_name ?? user.email ?? 'A user' },
+    link: '/bug-reports'
+  });
 
   revalidatePath('/bug-reports', 'page');
   return { ok: true };

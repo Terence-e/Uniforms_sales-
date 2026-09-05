@@ -84,6 +84,92 @@ export async function createAccount(
   return { ok: true, email };
 }
 
+export type AccountActionResult = { ok: true } | { ok: false; error: string };
+
+/** The caller's id iff they are a Super Admin, else null (checked server-side). */
+async function requireSuperAdmin(): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  return me?.role === 'super_admin' ? user.id : null;
+}
+
+/**
+ * Activate or deactivate an account (A-FR-P4). A deactivated user cannot log in
+ * (enforced in the login action), but the row stays and their name remains
+ * attached to everything they did -- deactivation is not deletion.
+ *
+ * Super-Admin only, enforced server-side. You cannot deactivate your own
+ * account: locking the only Super Admin out of the system is not a mistake the
+ * UI should allow. Audited (A-FR-11.1).
+ */
+export async function setAccountActive(
+  userId: string,
+  active: boolean
+): Promise<AccountActionResult> {
+  const uid = await requireSuperAdmin();
+  if (!uid) return { ok: false, error: 'forbidden' };
+  if (userId === uid) return { ok: false, error: 'cannotSelf' };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from('profiles').update({ is_active: active }).eq('id', userId);
+  if (error) return { ok: false, error: error.message };
+
+  await logAudit({
+    actorId: uid,
+    action: active ? 'account_activated' : 'account_deactivated',
+    targetTable: 'profiles',
+    targetId: userId,
+    newValue: { is_active: active }
+  });
+
+  revalidatePath('/', 'layout');
+  return { ok: true };
+}
+
+/**
+ * Delete an account outright. Super-Admin only. You cannot delete your own.
+ *
+ * Deleting the auth user cascades to its profile -- but a profile whose name is
+ * attached to sales, orders, movements or returns is protected by a foreign key
+ * (on delete restrict), so the delete fails and the account should be
+ * deactivated instead (P-4). That failure is surfaced as `hasActivity` so the
+ * UI can say so rather than showing a raw database error.
+ */
+export async function deleteAccount(userId: string): Promise<AccountActionResult> {
+  const uid = await requireSuperAdmin();
+  if (!uid) return { ok: false, error: 'forbidden' };
+  if (userId === uid) return { ok: false, error: 'cannotSelf' };
+
+  const admin = createAdminClient();
+  // Captured before deletion so the audit row still says who was removed.
+  const { data: target } = await admin
+    .from('profiles')
+    .select('full_name, role')
+    .eq('id', userId)
+    .single();
+
+  const { error } = await admin.auth.admin.deleteUser(userId);
+  if (error) {
+    // Almost always an FK restriction: the account has activity on record.
+    return { ok: false, error: 'hasActivity' };
+  }
+
+  await logAudit({
+    actorId: uid,
+    action: 'account_deleted',
+    targetTable: 'profiles',
+    targetId: userId,
+    previousValue: target ?? null
+  });
+
+  revalidatePath('/', 'layout');
+  return { ok: true };
+}
+
 function genTempPassword() {
   const letters = 'abcdefghjkmnpqrstuvwxyz';
   const pick = (n: number) =>

@@ -46,8 +46,31 @@ export function formatDateTime(value: string | Date, locale: string = 'en'): str
 }
 
 /** `YYYY-MM-DD`, for date inputs and file names. */
+/**
+ * A date as YYYY-MM-DD in LOCAL time. Deliberately not `toISOString().slice(0,10)`:
+ * that converts to UTC first, so in a timezone ahead of UTC (the school is at
+ * UTC+1) local midnight on the 1st becomes 23:00 on the previous day and the
+ * date comes out a day early -- which made "this month" start on the last day of
+ * the previous month.
+ */
 export function toDateInputValue(value: Date): string {
-  return value.toISOString().slice(0, 10);
+  const y = value.getFullYear();
+  const m = String(value.getMonth() + 1).padStart(2, '0');
+  const d = String(value.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** First day of the month containing `value`, as YYYY-MM-DD (local). */
+export function startOfMonth(value: Date): string {
+  return toDateInputValue(new Date(value.getFullYear(), value.getMonth(), 1));
+}
+
+/**
+ * Last day of the month containing `value`, as YYYY-MM-DD (local). Day 0 of the
+ * next month is the last day of this one, so this is correct for 28/29/30/31.
+ */
+export function endOfMonth(value: Date): string {
+  return toDateInputValue(new Date(value.getFullYear(), value.getMonth() + 1, 0));
 }
 
 export const SCHOOL = {

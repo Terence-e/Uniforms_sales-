@@ -5,8 +5,9 @@
 -- tables and must not be able to half-happen. Granting insert as well would
 -- offer a second, unsafe route to the same thing.
 --
--- Visibility follows the order, exactly as order_items do: a seller sees slips
--- against their own orders, oversight roles see all.
+-- Visibility follows the order, exactly as order_items do: orders are readable
+-- by every signed-in user (08_orders.sql), so the slips against them are too --
+-- the collection history is shared like the sales ledger.
 --
 -- Idempotent -- safe to re-run after edits.
 
@@ -17,10 +18,11 @@ create policy "collections_select_via_order"
   on public.collections for select
   to authenticated
   using (
+    -- Orders are readable by every signed-in user (08_orders.sql), so the slips
+    -- against them are too -- the collection history is shared like the ledger.
     exists (
       select 1 from public.orders o
       where o.id = collections.order_id
-        and (o.seller_id = (select auth.uid()) or public.can_oversee())
     )
   );
 
@@ -32,10 +34,7 @@ create policy "collection_items_select_via_collection"
   to authenticated
   using (
     exists (
-      select 1
-      from public.collections c
-      join public.orders o on o.id = c.order_id
+      select 1 from public.collections c
       where c.id = collection_items.collection_id
-        and (o.seller_id = (select auth.uid()) or public.can_oversee())
     )
   );

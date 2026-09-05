@@ -94,7 +94,19 @@
     "resetPassword": "Reset password",
     "resetFailed": "Could not reset the password.",
     "resetDoneTitle": "Temporary password set",
-    "resetDoneBody": "Share this with {name} securely. They must change it at next login."
+    "resetDoneBody": "Share this with {name} securely. They must change it at next login.",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "deleteConfirmTitle": "Delete this account?",
+    "deleteConfirmBody": "{name} will be removed permanently. If the account has any activity on record, delete is refused — deactivate it instead so their name stays on what they did.",
+    "deactivatedToast": "{name} deactivated.",
+    "activatedToast": "{name} activated.",
+    "deletedToast": "{name} deleted.",
+    "cannotSelf": "You cannot do that to your own account.",
+    "hasActivity": "This account has activity on record and cannot be deleted. Deactivate it instead.",
+    "actionFailed": "Could not complete that action."
   },
   "Notifications": {
     "title": "Notifications",
@@ -114,7 +126,8 @@
       "sale_recorded": { "title": "New sale", "body": "{receipt} · {total}" },
       "sale_cancelled": { "title": "Sale cancelled", "body": "{receipt}" },
       "order_placed": { "title": "New order", "body": "{order}" },
-      "price_changed": { "title": "Price changed", "body": "{product}" }
+      "price_changed": { "title": "Price changed", "body": "{product}" },
+      "bug_reported": { "title": "Support message", "body": "From {reporter} — tap to read" }
     }
   },
   "Audit": {
@@ -154,6 +167,9 @@
       "stock_movement": "Stock movement",
       "account_created": "Account created",
       "account_password_reset": "Password reset",
+      "account_activated": "Account activated",
+      "account_deactivated": "Account deactivated",
+      "account_deleted": "Account deleted",
       "profile_updated": "Profile updated",
       "password_changed": "Password changed"
     }
@@ -321,6 +337,7 @@
     "invalidCredentials": "Incorrect email or password.",
     "unexpectedError": "Something went wrong. Please try again.",
     "tooManyAttempts": "Too many failed attempts. Try again in a few minutes.",
+    "accountInactive": "This account has been deactivated. Contact your administrator.",
     "sessionExpired": "Your session expired. Please sign in again."
   },
   "Search": {
