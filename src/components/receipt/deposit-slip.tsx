@@ -54,7 +54,19 @@ export type DepositSlipData = {
  * holding this slip is the least likely of anyone to share the language the
  * seller had the screen in, and this is the paper they bring back weeks later.
  */
-export function DepositSlip({ slip }: { slip: DepositSlipData }) {
+export function DepositSlip({
+  slip,
+  canOperate = false
+}: {
+  slip: DepositSlipData;
+  /**
+   * Administration is read-only (A-FR-2.2). Reprint is a write -- rendering
+   * that URL stamps the sheet DUPLICATA / DUPLICATE and writes an audit row
+   * -- so it is withheld. Print and Back stay: looking at a document and
+   * sending it to a printer change nothing.
+   */
+  canOperate?: boolean;
+}) {
   const t = useTranslations('Alterations');
   const tReceipt = useTranslations('Receipt');
   const locale = useLocale();
@@ -75,7 +87,7 @@ export function DepositSlip({ slip }: { slip: DepositSlipData }) {
         </Button>
         <div className="flex items-center gap-2">
           <PaperToggle paper={paper} onChange={choose} />
-          {!slip.duplicate ? (
+          {!slip.duplicate && canOperate ? (
             <Button asChild variant="outline" size="sm">
               <Link href={`/alterations/${slip.alteration_id}/slip?reprint=1`}>
                 <Copy className="size-4" />

@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Copy, Printer } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { listDocuments } from '@/actions/documents';
+import { getProfile } from '@/actions/auth';
 import { DocumentFilters } from '@/components/documents/document-filters';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import {
   type DocumentKind
 } from '@/lib/documents';
 import { formatDateTime, formatMoney } from '@/lib/format';
+import { canOperate } from '@/lib/roles';
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -54,7 +56,13 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
   const to = query.to ?? '';
   const page = Math.max(Number(query.page) || 1, 1);
 
-  const { rows, total } = await listDocuments({ kinds, from, to, page });
+  const [{ rows, total }, profile] = await Promise.all([
+    listDocuments({ kinds, from, to, page }),
+    getProfile()
+  ]);
+  // Reprint stamps DUPLICATE and writes an audit row, so it is a write like
+  // any other (A-FR-2.2). Opening the document to read it is not.
+  const editable = canOperate(profile?.role);
   const pages = Math.max(Math.ceil(total / DOCUMENTS_PAGE_SIZE), 1);
 
   const pageHref = (n: number) => {
@@ -134,12 +142,14 @@ export default async function ReceiptsPage({ params, searchParams }: Props) {
                   {/* Links to the existing reprint URL rather than doing
                       anything itself: rendering that page is what stamps
                       DUPLICATE and writes the audit row. */}
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={reprintHref(doc.kind, doc.id)}>
-                      <Copy className="size-4" />
-                      {t('reprint')}
-                    </Link>
-                  </Button>
+                  {editable ? (
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={reprintHref(doc.kind, doc.id)}>
+                        <Copy className="size-4" />
+                        {t('reprint')}
+                      </Link>
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             ))

@@ -2,11 +2,13 @@ import { isReprintRequest, logReprint } from '@/actions/reprints';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getCollection } from '@/actions/orders';
+import { getProfile } from '@/actions/auth';
 import {
   CollectionSlip,
   type CollectionSlipData
 } from '@/components/receipt/collection-slip';
 import { referenceQrSvg } from '@/lib/qr';
+import { canOperate } from '@/lib/roles';
 
 type Props = {
   params: Promise<{ locale: string; id: string }>;
@@ -64,5 +66,7 @@ export default async function CollectionSlipPage({ params, searchParams }: Props
       }))
   };
 
-  return <CollectionSlip slip={slip} />;
+  const profile = await getProfile();
+
+  return <CollectionSlip slip={slip} canOperate={canOperate(profile?.role)} />;
 }

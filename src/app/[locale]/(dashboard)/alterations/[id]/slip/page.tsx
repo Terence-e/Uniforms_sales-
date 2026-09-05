@@ -2,8 +2,10 @@ import { isReprintRequest, logReprint } from '@/actions/reprints';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getAlteration } from '@/actions/alterations';
+import { getProfile } from '@/actions/auth';
 import { DepositSlip, type DepositSlipData } from '@/components/receipt/deposit-slip';
 import { referenceQrSvg } from '@/lib/qr';
+import { canOperate } from '@/lib/roles';
 
 type Props = {
   params: Promise<{ locale: string; id: string }>;
@@ -54,5 +56,7 @@ export default async function DepositSlipPage({ params, searchParams }: Props) {
     received_by: alteration.receivedBy?.full_name ?? ''
   };
 
-  return <DepositSlip slip={slip} />;
+  const profile = await getProfile();
+
+  return <DepositSlip slip={slip} canOperate={canOperate(profile?.role)} />;
 }

@@ -90,7 +90,20 @@ export type ReceiptData = {
  * chrome that the seller operates and the parent never sees, so it stays in the
  * seller's own language.
  */
-export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
+export function ReceiptPrint({
+  receipt,
+  canOperate = false
+}: {
+  receipt: ReceiptData;
+  /**
+   * Administration is read-only (A-FR-2.2). Reprint is a write -- rendering
+   * that URL stamps the sheet DUPLICATA / DUPLICATE and writes an audit row
+   * -- and Start Return opens a write flow, so both are withheld. Print and
+   * Back stay: looking at a document and sending it to a printer change
+   * nothing.
+   */
+  canOperate?: boolean;
+}) {
   const t = useTranslations('Receipt');
   const tReturns = useTranslations('Returns');
   const locale = useLocale();
@@ -118,7 +131,7 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
               (A-FR-8.3), and the receipt in the seller's hand is the most
               natural place to begin one from. Orders are collected, not
               returned, so they do not get this. */}
-          {!isOrder ? (
+          {!isOrder && canOperate ? (
             <Button asChild variant="outline" size="sm">
               <Link href={`/returns/new?sale=${receipt.record_id}`}>
                 <RotateCcw className="size-4" />
@@ -128,7 +141,7 @@ export function ReceiptPrint({ receipt }: { receipt: ReceiptData }) {
           ) : null}
           {/* Offered only on an original. From a duplicate the link would just
               reload the same stamped sheet and log another reprint. */}
-          {!receipt.duplicate ? (
+          {!receipt.duplicate && canOperate ? (
             <Button asChild variant="outline" size="sm">
               <Link href={`${basePath}?reprint=1`}>
                 <Copy className="size-4" />

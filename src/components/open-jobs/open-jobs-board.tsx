@@ -32,7 +32,19 @@ import {
  * what a counter needs.
  */
 
-export function OpenJobsBoard({ jobs }: { jobs: OpenJob[] }) {
+export function OpenJobsBoard({
+  jobs,
+  canOperate = false
+}: {
+  jobs: OpenJob[];
+  /**
+   * A-FR-9.22: Administration sees the same list, read-only -- it is the
+   * answer to "has that child's uniform been made yet?" without phoning Mr.
+   * Ateba. So the board renders in full and only the advance button, which
+   * moves a job on, is withheld (A-FR-2.2).
+   */
+  canOperate?: boolean;
+}) {
   const t = useTranslations('OpenJobs');
   const tOrders = useTranslations('Orders');
   const tAlt = useTranslations('Alterations');
@@ -176,7 +188,7 @@ export function OpenJobsBoard({ jobs }: { jobs: OpenJob[] }) {
                   </div>
 
                   <div className="space-y-1.5 pt-1">
-                    <JobAdvanceButton job={job} />
+                    {canOperate ? <JobAdvanceButton job={job} /> : null}
                     <Button asChild variant="link" size="sm" className="h-auto p-0">
                       <Link href={job.href}>{t('openJob')}</Link>
                     </Button>

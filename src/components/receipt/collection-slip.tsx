@@ -61,7 +61,19 @@ export type CollectionSlipData = {
  * the parent who ordered, so the reader of this sheet is the one least likely
  * to have been present when the language was chosen.
  */
-export function CollectionSlip({ slip }: { slip: CollectionSlipData }) {
+export function CollectionSlip({
+  slip,
+  canOperate = false
+}: {
+  slip: CollectionSlipData;
+  /**
+   * Administration is read-only (A-FR-2.2). Reprint is a write -- rendering
+   * that URL stamps the sheet DUPLICATA / DUPLICATE and writes an audit row
+   * -- so it is withheld. Print and Back stay: looking at a document and
+   * sending it to a printer change nothing.
+   */
+  canOperate?: boolean;
+}) {
   const t = useTranslations('Collection');
   const tReceipt = useTranslations('Receipt');
   const locale = useLocale();
@@ -80,7 +92,7 @@ export function CollectionSlip({ slip }: { slip: CollectionSlipData }) {
         </Button>
         <div className="flex items-center gap-2">
           <PaperToggle paper={paper} onChange={choose} />
-          {!slip.duplicate ? (
+          {!slip.duplicate && canOperate ? (
             <Button asChild variant="outline" size="sm">
               <Link href={`/collections/${slip.id}?reprint=1`}>
                 <Copy className="size-4" />
