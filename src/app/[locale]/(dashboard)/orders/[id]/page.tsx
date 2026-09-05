@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { deriveOrderStatus } from '@/lib/order-status';
 import { formatDate, formatDateTime, formatMoney } from '@/lib/format';
+import { canOperate } from '@/lib/roles';
 
 type Props = { params: Promise<{ locale: string; id: string }> };
 
@@ -91,7 +92,11 @@ export default async function OrderDetailPage({ params }: Props) {
         </CardContent>
       </Card>
 
-      {profile ? (
+      {/* A self-contained write form with no separate read value -- the ready
+          lines it lists are already visible below with their status badges --
+          so Administration (A-FR-2.2) gets nothing where an operator gets the
+          collection form, rather than a form it could never submit. */}
+      {profile && canOperate(profile.role) ? (
         <CollectionPanel
           orderId={order.id}
           lines={collectable.map((line) => ({
@@ -158,7 +163,11 @@ export default async function OrderDetailPage({ params }: Props) {
                 </p>
               </div>
 
-              <LineStatusControls lineId={item.id} status={item.status} />
+              <LineStatusControls
+                lineId={item.id}
+                status={item.status}
+                canOperate={canOperate(profile?.role)}
+              />
 
               {/* The reason behind the current status, when one was required.
                   The full history is in the audit log. */}

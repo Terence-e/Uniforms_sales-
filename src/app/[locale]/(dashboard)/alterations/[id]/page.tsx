@@ -2,10 +2,12 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { getAlteration } from '@/actions/alterations';
+import { getProfile } from '@/actions/auth';
 import { AlterationStatusControls } from '@/components/alterations/alteration-status-controls';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate, formatDateTime, formatMoney } from '@/lib/format';
+import { canOperate } from '@/lib/roles';
 
 type Props = { params: Promise<{ locale: string; id: string }> };
 
@@ -25,9 +27,10 @@ export default async function AlterationDetailPage({ params }: Props) {
   const alteration = await getAlteration(id);
   if (!alteration) notFound();
 
-  const [t, tSales] = await Promise.all([
+  const [t, tSales, profile] = await Promise.all([
     getTranslations('Alterations'),
-    getTranslations('Sales')
+    getTranslations('Sales'),
+    getProfile()
   ]);
 
   return (
@@ -57,6 +60,7 @@ export default async function AlterationDetailPage({ params }: Props) {
             status={alteration.status}
             charge={alteration.charge}
             paidAt={alteration.paid_at}
+            canOperate={canOperate(profile?.role)}
           />
           {alteration.status_reason ? (
             <p className="text-xs text-muted-foreground">

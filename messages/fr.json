@@ -4,6 +4,7 @@
     "tagline": "Point de vente des uniformes scolaires"
   },
   "Common": {
+    "readOnlyNotice": "Lecture seule : l’enregistrement est désactivé pour votre rôle.",
     "close": "Fermer",
     "loading": "Chargement"
   },

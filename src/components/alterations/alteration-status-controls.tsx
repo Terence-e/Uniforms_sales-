@@ -52,13 +52,21 @@ type Props = {
   status: AlterationStatus;
   charge: number;
   paidAt: string | null;
+  /**
+   * Administration has no write path anywhere (A-FR-2.2); can_operate() would
+   * refuse every one of these actions server-side regardless. The status and
+   * unpaid badges still render -- only the buttons and their dialogs are
+   * withheld.
+   */
+  canOperate: boolean;
 };
 
 export function AlterationStatusControls({
   alterationId,
   status,
   charge,
-  paidAt
+  paidAt,
+  canOperate
 }: Props) {
   const t = useTranslations('Alterations');
   const tSales = useTranslations('Sales');
@@ -118,7 +126,7 @@ export function AlterationStatusControls({
         </Badge>
       ) : null}
 
-      {isTerminal(status) ? null : (
+      {!canOperate || isTerminal(status) ? null : (
         <>
           {forward ? (
             <Button
@@ -161,124 +169,131 @@ export function AlterationStatusControls({
 
       {/* Offered whenever money is owed, terminal status included: a parent who
           collected on Friday and paid on Monday is not an error. */}
-      {owes ? (
+      {canOperate && owes ? (
         <Button size="sm" variant="outline" disabled={isPending} onClick={() => setPayOpen(true)}>
           <Banknote className="size-3.5" />
           {t('recordPayment')}
         </Button>
       ) : null}
 
-      {/* -------------------------------------------------- step back */}
-      <Dialog open={revertOpen} onOpenChange={setRevertOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('stepBackTitle')}</DialogTitle>
-            <DialogDescription>
-              {back ? t('stepBackTo', { status: t(`status.${back}`) }) : null}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor={`alt-revert-${alterationId}`}>{t('reason')}</Label>
-            <Textarea
-              id={`alt-revert-${alterationId}`}
-              rows={3}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              aria-invalid={Boolean(reasonError)}
-            />
-            {reasonError ? <p className="text-sm text-destructive">{reasonError}</p> : null}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRevertOpen(false)}>
-              {t('close')}
-            </Button>
-            <Button
-              disabled={isPending}
-              onClick={() => {
-                if (!reasonIsValid()) return;
-                run(() => revertAlteration({ alterationId, reason }));
-              }}
-            >
-              {t('confirmStepBack')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* All three dialogs are only ever opened from buttons hidden above when
+          read-only, so their state can never flip true -- skipping the mount
+          leaves no interactive control in the DOM at all. */}
+      {canOperate ? (
+        <>
+          {/* -------------------------------------------------- step back */}
+          <Dialog open={revertOpen} onOpenChange={setRevertOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('stepBackTitle')}</DialogTitle>
+              <DialogDescription>
+                {back ? t('stepBackTo', { status: t(`status.${back}`) }) : null}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor={`alt-revert-${alterationId}`}>{t('reason')}</Label>
+              <Textarea
+                id={`alt-revert-${alterationId}`}
+                rows={3}
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                aria-invalid={Boolean(reasonError)}
+              />
+              {reasonError ? <p className="text-sm text-destructive">{reasonError}</p> : null}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRevertOpen(false)}>
+                {t('close')}
+              </Button>
+              <Button
+                disabled={isPending}
+                onClick={() => {
+                  if (!reasonIsValid()) return;
+                  run(() => revertAlteration({ alterationId, reason }));
+                }}
+              >
+                {t('confirmStepBack')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      {/* -------------------------------------------------- cancel */}
-      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('cancelTitle')}</DialogTitle>
-            <DialogDescription>{t('cancelHint')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor={`alt-cancel-${alterationId}`}>{t('reason')}</Label>
-            <Textarea
-              id={`alt-cancel-${alterationId}`}
-              rows={3}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              aria-invalid={Boolean(reasonError)}
-            />
-            {reasonError ? <p className="text-sm text-destructive">{reasonError}</p> : null}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelOpen(false)}>
-              {t('close')}
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={isPending}
-              onClick={() => {
-                if (!reasonIsValid()) return;
-                run(() => cancelAlteration({ alterationId, reason }));
-              }}
-            >
-              {t('confirmCancel')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        {/* -------------------------------------------------- cancel */}
+        <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('cancelTitle')}</DialogTitle>
+              <DialogDescription>{t('cancelHint')}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor={`alt-cancel-${alterationId}`}>{t('reason')}</Label>
+              <Textarea
+                id={`alt-cancel-${alterationId}`}
+                rows={3}
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                aria-invalid={Boolean(reasonError)}
+              />
+              {reasonError ? <p className="text-sm text-destructive">{reasonError}</p> : null}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCancelOpen(false)}>
+                {t('close')}
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={isPending}
+                onClick={() => {
+                  if (!reasonIsValid()) return;
+                  run(() => cancelAlteration({ alterationId, reason }));
+                }}
+              >
+                {t('confirmCancel')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      {/* -------------------------------------------------- payment */}
-      <Dialog open={payOpen} onOpenChange={setPayOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('recordPaymentTitle')}</DialogTitle>
-            <DialogDescription>{t('recordPaymentHint')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>{tSales('paymentMethod')}</Label>
-            <Select
-              value={paymentMethod}
-              onValueChange={(value) => setPaymentMethod(value as PaymentMethodValue)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_METHODS.map((method) => (
-                  <SelectItem key={method} value={method}>
-                    {tSales(`payment.${method}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPayOpen(false)}>
-              {t('close')}
-            </Button>
-            <Button
-              disabled={isPending}
-              onClick={() => run(() => payAlteration({ alterationId, paymentMethod }))}
-            >
-              {t('confirmPayment')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        {/* -------------------------------------------------- payment */}
+        <Dialog open={payOpen} onOpenChange={setPayOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('recordPaymentTitle')}</DialogTitle>
+              <DialogDescription>{t('recordPaymentHint')}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label>{tSales('paymentMethod')}</Label>
+              <Select
+                value={paymentMethod}
+                onValueChange={(value) => setPaymentMethod(value as PaymentMethodValue)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((method) => (
+                    <SelectItem key={method} value={method}>
+                      {tSales(`payment.${method}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPayOpen(false)}>
+                {t('close')}
+              </Button>
+              <Button
+                disabled={isPending}
+                onClick={() => run(() => payAlteration({ alterationId, paymentMethod }))}
+              >
+                {t('confirmPayment')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+            </Dialog>
+        </>
+      ) : null}
     </div>
   );
 }
