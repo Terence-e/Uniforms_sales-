@@ -53,7 +53,6 @@ type Product = {
   name_en: string;
   name_fr: string | null;
   unit_price: number;
-  available: number;
 };
 
 type OutgoingLine = { productId: string; size: string | null; quantity: number };

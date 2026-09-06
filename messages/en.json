@@ -415,6 +415,8 @@
     "size": "Size",
     "unitPrice": "Unit price",
     "availableShort": "{count} available",
+    "sizeInStock": "{count} in stock (size {size})",
+    "sizeOutOfStock": "Size {size}: out of stock",
     "quantity": "Qty",
     "lineTotal": "Total",
     "subtotal": "Subtotal",
