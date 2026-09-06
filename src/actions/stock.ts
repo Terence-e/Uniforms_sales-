@@ -230,20 +230,22 @@ export async function listProducts() {
     reservedByProductSize()
   ]);
 
-  // One option per product (size is picked on the line). The availability shown
-  // here is the total across sizes -- a rough at-a-glance figure; the real
-  // per-size check happens at sale time against the chosen size.
+  // One option per product; the count is NOT shown against the product itself.
+  // Stock is per size, so `stockBySize` carries the available quantity for each
+  // size (in stock minus what Ready orders reserve). The sale line reads it only
+  // once a size is picked -- picking "Shirt" shows nothing, picking size 20
+  // shows that size's count (50, or 0 for out of stock).
   return (data ?? []).map((product) => {
     const levels = Array.isArray(product.levels)
       ? product.levels
       : product.levels
         ? [product.levels]
         : [];
-    const inStock = levels.reduce((sum, l) => sum + (l.quantity ?? 0), 0);
-    const reservedQty = levels.reduce(
-      (sum, l) => sum + (reserved[levelKey(product.id, l.size ?? '')] ?? 0),
-      0
-    );
+    const stockBySize: Record<string, number> = {};
+    for (const l of levels) {
+      const size = l.size ?? '';
+      stockBySize[size] = (l.quantity ?? 0) - (reserved[levelKey(product.id, size)] ?? 0);
+    }
     return {
       id: product.id,
       sku: product.sku,
@@ -251,9 +253,7 @@ export async function listProducts() {
       name_fr: product.name_fr,
       unit_price: product.unit_price,
       category: product.category,
-      inStock,
-      reserved: reservedQty,
-      available: inStock - reservedQty
+      stockBySize
     };
   });
 }

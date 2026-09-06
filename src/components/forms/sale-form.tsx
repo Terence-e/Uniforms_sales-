@@ -54,13 +54,12 @@ export type ProductOption = {
   unit_price: number;
   category: string;
   /**
-   * What can actually be sold: in stock minus what Ready orders have already
-   * claimed (A-FR-9.10). Optional so the production form, which cares about
-   * neither, can keep passing the same shape.
+   * Available quantity per size (in stock minus what Ready orders reserve,
+   * A-FR-9.10). Keyed by size label. The count is shown only after a size is
+   * picked, never against the product itself. Optional so the production form,
+   * which doesn't need it, can pass the same shape.
    */
-  available?: number;
-  inStock?: number;
-  reserved?: number;
+  stockBySize?: Record<string, number>;
 };
 
 const DEFAULTS: SaleInput = {
@@ -440,6 +439,11 @@ export function SaleForm({
             const line =
               (Number(watchedItems?.[index]?.unitPrice) || 0) *
               (Number(watchedItems?.[index]?.quantity) || 0);
+            // Per-size availability, shown only once a size is chosen. A custom
+            // size that isn't a tracked bucket reads as 0 in stock.
+            const chosenSize = watchedItems?.[index]?.size ?? null;
+            const sizeStock =
+              chosen && chosenSize ? chosen.stockBySize?.[chosenSize] ?? 0 : null;
 
             return (
               <div
@@ -455,25 +459,12 @@ export function SaleForm({
                       <SelectValue placeholder={t('selectProduct')} />
                     </SelectTrigger>
                     <SelectContent>
+                      {/* No stock number here: stock is per size, so the count
+                          is meaningless against the garment alone. It appears
+                          under the size bar once a size is picked. */}
                       {products.map((product) => (
                         <SelectItem key={product.id} value={product.id}>
-                          <span className="flex w-full items-center justify-between gap-3">
-                            <span>{productLabel(product)}</span>
-                            {/* Availability sits beside the name so the seller
-                                reads it while choosing rather than discovering
-                                it afterwards. */}
-                            {typeof product.available === 'number' ? (
-                              <span
-                                className={
-                                  product.available <= 0
-                                    ? 'text-xs font-medium text-destructive'
-                                    : 'text-xs text-muted-foreground'
-                                }
-                              >
-                                {t('availableShort', { count: product.available })}
-                              </span>
-                            ) : null}
-                          </span>
+                          {productLabel(product)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -515,21 +506,6 @@ export function SaleForm({
                     inputMode="numeric"
                     aria-invalid={Boolean(itemErrors?.quantity)}
                   />
-                  {/* Shown, never enforced: selling below stock is allowed with
-                      a warning, an override and an audit row, which is a
-                      separate issue. A hard cap here would have to be undone
-                      there. */}
-                  {chosen && typeof chosen.available === 'number' ? (
-                    <p
-                      className={
-                        wanted > chosen.available
-                          ? 'mt-1 text-xs font-medium text-amber-600 dark:text-amber-500'
-                          : 'mt-1 text-xs text-muted-foreground'
-                      }
-                    >
-                      {t('availableShort', { count: chosen.available })}
-                    </p>
-                  ) : null}
                 </div>
 
                 <div className="flex items-end justify-between gap-2 sm:col-span-3">
@@ -556,14 +532,31 @@ export function SaleForm({
                 {/* Size bar, once a product is picked (A-FR-4.2). Sits on its
                     own full-width row so the boxes have room on a phone. */}
                 {chosen && sizes.length > 0 ? (
-                  <div className="sm:col-span-12">
+                  <div className="sm:col-span-12 space-y-1.5">
                     <SizeBar
                       sizes={sizes}
-                      value={watchedItems?.[index]?.size ?? null}
+                      value={chosenSize}
                       onChange={(next) =>
                         setValue(`items.${index}.size`, next, { shouldDirty: true })
                       }
                     />
+                    {/* Stock for the CHOSEN size only (A-FR-9.10). Zero is shown
+                        plainly; below-stock warns but never blocks the sale. */}
+                    {chosenSize && sizeStock !== null ? (
+                      <p
+                        className={
+                          sizeStock <= 0
+                            ? 'text-xs font-medium text-destructive'
+                            : wanted > sizeStock
+                              ? 'text-xs font-medium text-amber-600 dark:text-amber-500'
+                              : 'text-xs text-muted-foreground'
+                        }
+                      >
+                        {sizeStock <= 0
+                          ? t('sizeOutOfStock', { size: chosenSize })
+                          : t('sizeInStock', { count: sizeStock, size: chosenSize })}
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
